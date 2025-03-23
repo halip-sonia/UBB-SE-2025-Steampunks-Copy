@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Steampunks.Views.MarketplacePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Steampunks.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" 
+                   Text="Skin Marketplace" 
+                   Style="{StaticResource TitleTextBlockStyle}"
+                   Margin="0,0,0,20"/>
+
+        <StackPanel Grid.Row="1" 
+                    Orientation="Horizontal" 
+                    Spacing="10"
+                    Margin="0,0,0,20">
+            <ComboBox PlaceholderText="Game" Width="200"/>
+            <ComboBox PlaceholderText="Type" Width="200"/>
+            <ComboBox PlaceholderText="Rarity" Width="200"/>
+            <TextBox PlaceholderText="Search skins..." Width="300"/>
+        </StackPanel>
+
+        <GridView Grid.Row="2"
+                  SelectionMode="Single">
+            <GridView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Width="200" Height="250">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Image Grid.Row="0" Stretch="UniformToFill"/>
+                        <TextBlock Grid.Row="1" Text="{Binding Name}" Style="{StaticResource BodyTextBlockStyle}"/>
+                        <TextBlock Grid.Row="2" Text="{Binding Price}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                    </Grid>
+                </DataTemplate>
+            </GridView.ItemTemplate>
+        </GridView>
+    </Grid>
+</Page> 
