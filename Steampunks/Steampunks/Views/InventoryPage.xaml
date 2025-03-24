@@ -27,7 +27,7 @@
             <ComboBox PlaceholderText="Game" Width="200"/>
             <ComboBox PlaceholderText="Type" Width="200"/>
             <TextBox PlaceholderText="Search inventory..." Width="300"/>
-            <Button Content="Create Trade Offer" Style="{StaticResource AccentButtonStyle}"/>
+            <Button Content="Create Trade Offer" Style="{StaticResource AccentButtonStyle}" Click="CreateTradeOffer_Click"/>
         </StackPanel>
 
         <GridView Grid.Row="2"
