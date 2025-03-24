@@ -65,6 +65,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="DataLink\Scripts\InitializeDatabase.sql" />
+    <None Include="DataLink\Scripts\InitializeDatabase.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
