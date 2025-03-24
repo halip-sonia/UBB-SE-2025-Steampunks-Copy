@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Steampunks.Domain.Entities;
 using Steampunks.Services;
+using System.Threading.Tasks;
 
 namespace Steampunks.ViewModels
 {
@@ -16,6 +17,7 @@ namespace Steampunks.ViewModels
         private string _selectedGame;
         private string _selectedType;
         private string _selectedRarity;
+        private Item _selectedItem;
 
         public ObservableCollection<Item> Items
         {
@@ -68,6 +70,45 @@ namespace Steampunks.ViewModels
                 _selectedRarity = value;
                 FilterItems();
                 OnPropertyChanged();
+            }
+        }
+
+        public Item SelectedItem
+        {
+            get => _selectedItem;
+            set
+            {
+                if (_selectedItem != value)
+                {
+                    _selectedItem = value;
+                    OnPropertyChanged(nameof(SelectedItem));
+                }
+            }
+        }
+
+        public bool CanBuyItem => SelectedItem != null && SelectedItem.IsListed;
+
+        public async Task<bool> BuyItemAsync()
+        {
+            if (SelectedItem == null || !SelectedItem.IsListed)
+                return false;
+
+            try
+            {
+                // Here you would typically:
+                // 1. Check if user has enough balance
+                // 2. Process the transaction
+                // 3. Update the item's status
+                // 4. Update the UI
+                
+                // For now, we'll just simulate a successful purchase
+                SelectedItem.IsListed = false;
+                OnPropertyChanged(nameof(CanBuyItem));
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 

@@ -48,7 +48,9 @@
 
         <GridView Grid.Row="2"
                   ItemsSource="{Binding Items}"
-                  SelectionMode="Single">
+                  SelectionMode="Single"
+                  IsItemClickEnabled="True"
+                  ItemClick="GridView_ItemClick">
             <GridView.ItemTemplate>
                 <DataTemplate>
                     <Grid Width="200" Height="250">
@@ -89,5 +91,49 @@
                 </DataTemplate>
             </GridView.ItemTemplate>
         </GridView>
+
+        <ContentDialog x:Name="ItemDetailsDialog"
+                      Title="{Binding SelectedItem.ItemName}"
+                      PrimaryButtonText="Close"
+                      SecondaryButtonText="Buy Item"
+                      DefaultButton="Primary">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Image Grid.Row="0"
+                       Source="{Binding SelectedItem.ImagePath}"
+                       Stretch="UniformToFill"
+                       Width="400"
+                       Height="300"
+                       Margin="0,0,0,20"/>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                    <TextBlock Text="Game:"
+                             Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="{Binding SelectedItem.Game.Title}"
+                             Style="{StaticResource BodyTextBlockStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                    <TextBlock Text="Price:"
+                             Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="{Binding SelectedItem.Price, Converter={StaticResource PriceConverter}}"
+                             Style="{StaticResource BodyTextBlockStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="3">
+                    <TextBlock Text="Description:"
+                             Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="{Binding SelectedItem.Description}"
+                             Style="{StaticResource BodyTextBlockStyle}"
+                             TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+        </ContentDialog>
     </Grid>
 </Page>
