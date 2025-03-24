@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace Steampunks.ViewModels
         private string _selectedGame;
         private string _selectedType;
         private string _selectedRarity;
+        private List<Item> _allCurrentItems;
         private Item _selectedItem;
 
         public ObservableCollection<Item> Items
@@ -72,7 +74,6 @@ namespace Steampunks.ViewModels
                 OnPropertyChanged();
             }
         }
-
         public Item SelectedItem
         {
             get => _selectedItem;
@@ -111,7 +112,6 @@ namespace Steampunks.ViewModels
                 return false;
             }
         }
-
         public ObservableCollection<string> AvailableGames { get; set; }
         public ObservableCollection<string> AvailableTypes { get; set; }
         public ObservableCollection<string> AvailableRarities { get; set; }

@@ -724,5 +724,246 @@ namespace Steampunks.DataLink
                 CloseConnection();
             }
         }
+
+        public List<Item> GetInventoryItems(Game game)
+        {
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed
+                FROM Items i
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId
+                WHERE ui.GameId = @GameId AND ui.UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@UserId", GetCurrentUser().UserId);
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return items;
+        }
+
+        public List<Item> GetAllInventoryItems(User user)
+        {
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Price as GamePrice,
+                    g.Status as GameStatus
+                FROM Items i
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId
+                JOIN Games g ON ui.GameId = g.GameId
+                WHERE ui.UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return items;
+        }
+
+        public void AddInventoryItem(Game game, Item item, User user)
+        {
+            const string query = @"
+                INSERT INTO UserInventory (UserId, GameId, ItemId)
+                VALUES (@UserId, @GameId, @ItemId)";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    OpenConnection();
+                    command.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public void RemoveInventoryItem(Game game, Item item, User user)
+        {
+            const string query = @"
+                DELETE FROM UserInventory 
+                WHERE UserId = @UserId AND GameId = @GameId AND ItemId = @ItemId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    OpenConnection();
+                    command.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public List<Game> GetGames()
+        {
+            var games = new List<Game>();
+            const string query = @"
+                SELECT 
+                    GameId,
+                    Title,
+                    Price,
+                    Genre,
+                    Description,
+                    Status
+                FROM Games
+                ORDER BY Title";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("Title")),
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("Status")));
+                            games.Add(game);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return games;
+        }
+
+        public Game GetGameById(int gameId)
+        {
+            const string query = @"
+                SELECT 
+                    GameId,
+                    Title,
+                    Price,
+                    Genre,
+                    Description,
+                    Status
+                FROM Games
+                WHERE GameId = @GameId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@GameId", gameId);
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("Title")),
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("Status")));
+                            return game;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return null;
+        }
     }
 } 
