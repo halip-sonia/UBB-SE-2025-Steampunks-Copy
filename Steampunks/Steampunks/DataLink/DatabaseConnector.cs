@@ -344,27 +344,10 @@ namespace Steampunks.DataLink
             
             using (var command = new SqlCommand(@"
                 UPDATE GameTrades 
-                SET 
-                    AcceptedBySourceUser = CASE 
-                        WHEN SourceUserId = @UserId THEN 1 
-                        ELSE AcceptedBySourceUser 
-                    END,
-                    AcceptedByDestinationUser = CASE 
-                        WHEN DestinationUserId = @UserId THEN 1 
-                        ELSE AcceptedByDestinationUser 
-                    END,
-                    TradeStatus = CASE 
-                        WHEN (
-                            (SourceUserId = @UserId AND DestinationUserId = @UserId) OR
-                            (SourceUserId != @UserId AND AcceptedBySourceUser = 1) OR
-                            (DestinationUserId != @UserId AND AcceptedByDestinationUser = 1)
-                        ) THEN 'Completed'
-                        ELSE 'Pending'
-                    END
+                SET TradeStatus = 'Completed'
                 WHERE TradeId = @TradeId", GetConnection()))
             {
                 command.Parameters.AddWithValue("@TradeId", tradeId);
-                command.Parameters.AddWithValue("@UserId", currentUser.UserId);
 
                 try
                 {
@@ -397,6 +380,69 @@ namespace Steampunks.DataLink
                     CloseConnection();
                 }
             }
+        }
+
+        public List<GameTrade> GetTradeHistory()
+        {
+            var trades = new List<GameTrade>();
+            var currentUser = GetCurrentUser();
+
+            using (var command = new SqlCommand(@"
+                SELECT 
+                    t.TradeId, t.TradeDate, t.TradeDescription, t.TradeStatus,
+                    t.AcceptedBySourceUser, t.AcceptedByDestinationUser,
+                    su.UserId as SourceUserId, su.Username as SourceUsername,
+                    du.UserId as DestUserId, du.Username as DestUsername,
+                    g.GameId, g.Title, g.Price, g.Genre, g.Description
+                FROM GameTrades t
+                JOIN Users su ON t.SourceUserId = su.UserId
+                JOIN Users du ON t.DestinationUserId = du.UserId
+                JOIN Games g ON t.GameId = g.GameId
+                WHERE (t.SourceUserId = @UserId OR t.DestinationUserId = @UserId)
+                AND t.TradeStatus IN ('Completed', 'Declined')
+                ORDER BY t.TradeDate DESC", GetConnection()))
+            {
+                command.Parameters.AddWithValue("@UserId", currentUser.UserId);
+
+                try
+                {
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var sourceUser = new User(
+                                reader.GetString(reader.GetOrdinal("SourceUsername"))
+                            );
+                            sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
+
+                            var destUser = new User(
+                                reader.GetString(reader.GetOrdinal("DestUsername"))
+                            );
+                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("Title")),
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                            var trade = new GameTrade(sourceUser, destUser, game, reader.GetString(reader.GetOrdinal("TradeDescription")));
+                            trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
+                            trade.SetTradeStatus(reader.GetString(reader.GetOrdinal("TradeStatus")));
+
+                            trades.Add(trade);
+                        }
+                    }
+                }
+                finally
+                {
+                    CloseConnection();
+                }
+            }
+            return trades;
         }
     }
 } 
