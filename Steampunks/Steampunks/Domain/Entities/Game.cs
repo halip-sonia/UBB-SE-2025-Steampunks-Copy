@@ -14,7 +14,13 @@ namespace Steampunks.Domain.Entities
         public float RecommendedSpecs { get; private set; }
         public float MinimumSpecs { get; private set; }
 
-        private Game() { } // For EF Core
+        private Game() 
+        { 
+            Title = string.Empty;
+            Genre = string.Empty;
+            Description = string.Empty;
+            GameReviews = new List<Review>();
+        } // For EF Core
 
         public Game(string title, float price, string genre, string description)
         {
@@ -58,6 +64,11 @@ namespace Steampunks.Domain.Entities
         public void AddReview(Review review)
         {
             GameReviews.Add(review);
+        }
+
+        public override string ToString()
+        {
+            return Price > 0 ? $"{Title} (${Price:F2})" : Title;
         }
     }
 
