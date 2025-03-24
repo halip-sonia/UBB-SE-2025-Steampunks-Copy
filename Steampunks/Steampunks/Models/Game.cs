@@ -10,7 +10,6 @@ namespace Steampunks.Models
         private float price;
         private string genre;
         private int developerId;
-        public List<Review> game_reviews { get; set; }
         public GameStatus status { get; set; }
         public string RecommendedSpecs { get; set; }
         public string MinimumSpecs { get; set; }
@@ -54,18 +53,6 @@ namespace Steampunks.Models
         public int getDeveloperId()
         {
             return developerId;
-        }
-
-        public void addReview(Review review)
-        {
-            if (game_reviews == null)
-                game_reviews = new List<Review>();
-            game_reviews.Add(review);
-        }
-
-        public List<Review> getAllReviews()
-        {
-            return game_reviews;
         }
     }
 
