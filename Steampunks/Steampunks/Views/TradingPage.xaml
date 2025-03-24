@@ -29,7 +29,18 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="0" Spacing="10">
+                        <StackPanel Grid.Row="0" 
+                                  Orientation="Horizontal" 
+                                  Spacing="10"
+                                  Margin="0,0,0,20">
+                            <TextBlock Text="Current User:" 
+                                     VerticalAlignment="Center"/>
+                            <ComboBox x:Name="UserComboBox" 
+                                    Width="200"
+                                    SelectionChanged="UserComboBox_SelectionChanged"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Spacing="10">
                             <TextBlock Text="Create New Trade Offer" Style="{StaticResource SubtitleTextBlockStyle}"/>
                             <ComboBox x:Name="GameComboBox" PlaceholderText="Select Game" Width="300"/>
                             <TextBox x:Name="RecipientTextBox" PlaceholderText="Recipient Username" Width="300"/>
@@ -106,40 +117,67 @@
                 </TabViewItem>
 
                 <TabViewItem Header="Trade History">
-                    <ListView>
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Padding="12" ColumnSpacing="20">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
+                    <Grid Padding="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                                    <PersonPicture Grid.Column="0" 
-                                                 DisplayName="{Binding PartnerName}"
-                                                 Width="40" Height="40"/>
-                                    
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding PartnerName}" 
-                                                 Style="{StaticResource BodyTextBlockStyle}"/>
-                                        <TextBlock Text="{Binding Status}"
-                                                 Style="{StaticResource CaptionTextBlockStyle}"/>
-                                    </StackPanel>
+                        <TextBlock Text="Trade History" 
+                                 Style="{StaticResource SubtitleTextBlockStyle}"
+                                 Margin="0,0,0,20"/>
 
-                                    <TextBlock Grid.Column="2" 
-                                             Text="{Binding CompletedDate}"
-                                             Style="{StaticResource CaptionTextBlockStyle}"
-                                             VerticalAlignment="Center"/>
+                        <ListView x:Name="TradeHistoryListView" 
+                                Grid.Row="1"
+                                SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Padding="12" 
+                                          ColumnSpacing="20" 
+                                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                          BorderThickness="1"
+                                          CornerRadius="8"
+                                          Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                    <Button Grid.Column="3" 
-                                            Content="View"
-                                            Style="{StaticResource AccentButtonStyle}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
+                                        <StackPanel Grid.Column="0" Width="200">
+                                            <TextBlock Text="Trade Partner" 
+                                                     Style="{StaticResource CaptionTextBlockStyle}"
+                                                     Opacity="0.6"/>
+                                            <TextBlock Text="{Binding PartnerName}" 
+                                                     Style="{StaticResource BodyTextBlockStyle}"/>
+                                            <TextBlock Text="{Binding TradeDate}" 
+                                                     Style="{StaticResource CaptionTextBlockStyle}"
+                                                     Opacity="0.6"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Game" 
+                                                     Style="{StaticResource CaptionTextBlockStyle}"
+                                                     Opacity="0.6"/>
+                                            <TextBlock Text="{Binding GameTitle}" 
+                                                     Style="{StaticResource BodyTextBlockStyle}"/>
+                                            <TextBlock Text="{Binding TradeDescription}"
+                                                     Style="{StaticResource BodyTextBlockStyle}"
+                                                     Opacity="0.8"
+                                                     TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" 
+                                                  VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TradeStatus}"
+                                                     Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                     Foreground="{Binding StatusColor}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
                 </TabViewItem>
             </TabView.TabItems>
         </TabView>

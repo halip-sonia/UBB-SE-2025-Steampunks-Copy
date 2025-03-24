@@ -1,92 +1,70 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Steampunks.Models;
+using Steampunks.Domain.Entities;
 using Steampunks.DataLink;
 
 namespace Steampunks.Repository.Marketplace
 {
     public class MarketplaceRepository : IMarketplaceRepository
     {
-        private readonly DbContext _dbContext;
+        private readonly DatabaseConnector _dbConnector;
 
-        public MarketplaceRepository(DbContext dbContext)
+        public MarketplaceRepository()
         {
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _dbConnector = new DatabaseConnector();
         }
 
-        public async Task<Game> GetListing(string itemId)
+        public List<Item> GetAllListings()
         {
-            if (string.IsNullOrEmpty(itemId))
-                throw new ArgumentNullException(nameof(itemId));
-
-            return await _dbContext.Set<Game>().FindAsync(itemId);
+            return _dbConnector.GetAllListings();
         }
 
-        public async Task<List<Game>> GetListings()
-        {
-            return await _dbContext.Set<Game>().ToListAsync();
-        }
-
-        public async Task<Game> CreateListing(Game game)
+        public List<Item> GetListingsByGame(Game game)
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 
-            await _dbContext.Set<Game>().AddAsync(game);
-            await _dbContext.SaveChangesAsync();
-            return game;
+            return _dbConnector.GetListingsByGame(game);
         }
 
-        public async Task<Game> UpdateListing(Game game, string itemId)
+        public void AddListing(Game game, Item item)
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
-            if (string.IsNullOrEmpty(itemId))
-                throw new ArgumentNullException(nameof(itemId));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
 
-            var existingGame = await GetListing(itemId);
-            if (existingGame == null)
-                throw new KeyNotFoundException($"Game with ID {itemId} not found");
-
-            _dbContext.Entry(existingGame).CurrentValues.SetValues(game);
-            await _dbContext.SaveChangesAsync();
-            return existingGame;
+            _dbConnector.AddListing(item);
         }
 
-        public async Task DeleteListing(string itemId)
-        {
-            if (string.IsNullOrEmpty(itemId))
-                throw new ArgumentNullException(nameof(itemId));
-
-            var game = await GetListing(itemId);
-            if (game == null)
-                throw new KeyNotFoundException($"Game with ID {itemId} not found");
-
-            _dbContext.Set<Game>().Remove(game);
-            await _dbContext.SaveChangesAsync();
-        }
-
-        public async Task<Game> GetCorrespondingGame(Game game, string itemId)
+        public void RemoveListing(Game game, Item item)
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
-            if (string.IsNullOrEmpty(itemId))
-                throw new ArgumentNullException(nameof(itemId));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
 
-            return await _dbContext.Set<Game>()
-                .FirstOrDefaultAsync(g => g.Id == itemId);
+            _dbConnector.RemoveListing(item);
+        }
+
+        public void UpdateListing(Game game, Item item)
+        {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            _dbConnector.UpdateListing(item);
         }
     }
 
     public interface IMarketplaceRepository
     {
-        Task<Game> GetListing(string itemId);
-        Task<List<Game>> GetListings();
-        Task<Game> CreateListing(Game game);
-        Task<Game> UpdateListing(Game game, string itemId);
-        Task DeleteListing(string itemId);
-        Task<Game> GetCorrespondingGame(Game game, string itemId);
+        List<Item> GetAllListings();
+        List<Item> GetListingsByGame(Game game);
+        void AddListing(Game game, Item item);
+        void RemoveListing(Game game, Item item);
+        void UpdateListing(Game game, Item item);
     }
 }

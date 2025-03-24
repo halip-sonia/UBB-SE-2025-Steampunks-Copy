@@ -4,13 +4,15 @@ namespace Steampunks.Domain.Entities
 {
     public class Game
     {
+        public string Id { get; set; }
+        public string Name { get; set; }
         public int GameId { get; private set; }
         public string Title { get; private set; }
         public float Price { get; private set; }
         public string Genre { get; private set; }
         public string Description { get; private set; }
         public ICollection<Review> GameReviews { get; private set; }
-        public GameStatus Status { get; private set; }
+        public string Status { get; private set; }
         public float RecommendedSpecs { get; private set; }
         public float MinimumSpecs { get; private set; }
 
@@ -29,21 +31,7 @@ namespace Steampunks.Domain.Entities
             Genre = genre;
             Description = description;
             GameReviews = new List<Review>();
-        }
-
-        public void SetTitle(string title)
-        {
-            Title = title;
-        }
-
-        public void SetPrice(float price)
-        {
-            Price = price;
-        }
-
-        public void SetGenre(string genre)
-        {
-            Genre = genre;
+            Status = "Available";
         }
 
         public void SetGameId(int id)
@@ -51,14 +39,54 @@ namespace Steampunks.Domain.Entities
             GameId = id;
         }
 
-        public void SetName(string name)
+        public string GetTitle()
         {
-            Title = name;
+            return Title;
+        }
+
+        public void SetTitle(string title)
+        {
+            Title = title;
+        }
+
+        public float GetPrice()
+        {
+            return Price;
+        }
+
+        public void SetPrice(float price)
+        {
+            Price = price;
+        }
+
+        public string GetGenre()
+        {
+            return Genre;
+        }
+
+        public void SetGenre(string genre)
+        {
+            Genre = genre;
+        }
+
+        public string GetDescription()
+        {
+            return Description;
         }
 
         public void SetDescription(string description)
         {
             Description = description;
+        }
+
+        public string GetStatus()
+        {
+            return Status;
+        }
+
+        public void SetStatus(string status)
+        {
+            Status = status;
         }
 
         public void AddReview(Review review)

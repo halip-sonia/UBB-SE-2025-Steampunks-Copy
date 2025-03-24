@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections.ObjectModel;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
 
 namespace Steampunks.Views
 {
@@ -13,15 +15,51 @@ namespace Steampunks.Views
     {
         private readonly DatabaseConnector _dbConnector;
         private ObservableCollection<TradeViewModel> ActiveTrades { get; set; }
+        private ObservableCollection<TradeHistoryViewModel> TradeHistory { get; set; }
+        private User _currentUser;
 
         public TradingPage()
         {
             InitializeComponent();
             _dbConnector = new DatabaseConnector();
             ActiveTrades = new ObservableCollection<TradeViewModel>();
+            TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
             ActiveTradesListView.ItemsSource = ActiveTrades;
+            TradeHistoryListView.ItemsSource = TradeHistory;
+            LoadUsers();
             LoadGames();
-            LoadActiveTrades();
+        }
+
+        private void LoadUsers()
+        {
+            try
+            {
+                var users = _dbConnector.GetAllUsers();
+                UserComboBox.ItemsSource = users;
+                UserComboBox.DisplayMemberPath = "Username";
+
+                // Set the current user as the selected user
+                _currentUser = _dbConnector.GetCurrentUser();
+                UserComboBox.SelectedItem = users.FirstOrDefault(u => u.UserId == _currentUser.UserId);
+
+                LoadActiveTrades();
+                LoadTradeHistory();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.Text = "Error loading users. Please try again later.";
+                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+            }
+        }
+
+        private void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (UserComboBox.SelectedItem is User selectedUser)
+            {
+                _currentUser = selectedUser;
+                LoadActiveTrades();
+                LoadTradeHistory();
+            }
         }
 
         private void LoadGames()
@@ -50,13 +88,12 @@ namespace Steampunks.Views
         {
             try
             {
-                var currentUser = _dbConnector.GetCurrentUser();
-                var trades = _dbConnector.GetActiveGameTrades();
+                var trades = _dbConnector.GetActiveGameTrades(_currentUser.UserId);
                 ActiveTrades.Clear();
 
                 foreach (var trade in trades)
                 {
-                    var isSourceUser = trade.GetSourceUser().UserId == currentUser.UserId;
+                    var isSourceUser = trade.GetSourceUser().UserId == _currentUser.UserId;
                     var partner = isSourceUser ? trade.GetDestinationUser() : trade.GetSourceUser();
                     
                     ActiveTrades.Add(new TradeViewModel
@@ -73,6 +110,42 @@ namespace Steampunks.Views
             {
                 ErrorMessage.Text = "Error loading active trades. Please try again later.";
                 System.Diagnostics.Debug.WriteLine($"Error loading active trades: {ex.Message}");
+            }
+        }
+
+        private void LoadTradeHistory()
+        {
+            try
+            {
+                var trades = _dbConnector.GetTradeHistory(_currentUser.UserId);
+                TradeHistory.Clear();
+
+                foreach (var trade in trades)
+                {
+                    var isSourceUser = trade.GetSourceUser().UserId == _currentUser.UserId;
+                    var partner = isSourceUser ? trade.GetDestinationUser() : trade.GetSourceUser();
+                    
+                    var statusColor = trade.TradeStatus == "Completed" 
+                        ? new SolidColorBrush(Colors.Green) 
+                        : new SolidColorBrush(Colors.Red);
+
+                    TradeHistory.Add(new TradeHistoryViewModel
+                    {
+                        TradeId = trade.TradeId,
+                        PartnerName = partner.Username,
+                        GameTitle = trade.GetTradeGame().Title,
+                        TradeDescription = trade.TradeDescription,
+                        TradeStatus = trade.TradeStatus,
+                        TradeDate = trade.TradeDate.ToString("MMM dd, yyyy HH:mm"),
+                        StatusColor = statusColor,
+                        IsSourceUser = isSourceUser
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.Text = "Error loading trade history. Please try again later.";
+                System.Diagnostics.Debug.WriteLine($"Error loading trade history: {ex.Message}");
             }
         }
 
@@ -105,7 +178,6 @@ namespace Steampunks.Views
 
             try
             {
-                var currentUser = _dbConnector.GetCurrentUser();
                 var recipientUser = _dbConnector.GetUserByUsername(recipientUsername);
 
                 if (recipientUser == null)
@@ -114,13 +186,13 @@ namespace Steampunks.Views
                     return;
                 }
 
-                if (currentUser.UserId == recipientUser.UserId)
+                if (_currentUser.UserId == recipientUser.UserId)
                 {
                     ErrorMessage.Text = "You cannot create a trade offer with yourself.";
                     return;
                 }
 
-                var gameTrade = new GameTrade(currentUser, recipientUser, selectedGame, description);
+                var gameTrade = new GameTrade(_currentUser, recipientUser, selectedGame, description);
                 _dbConnector.CreateGameTrade(gameTrade);
 
                 // Clear form
@@ -130,6 +202,10 @@ namespace Steampunks.Views
 
                 // Show success message
                 SuccessMessage.Text = "Trade offer created successfully!";
+
+                // Refresh the trades lists
+                LoadActiveTrades();
+                LoadTradeHistory();
             }
             catch (Exception ex)
             {
@@ -158,7 +234,8 @@ namespace Steampunks.Views
                 try
                 {
                     _dbConnector.AcceptTrade(trade.TradeId);
-                    LoadActiveTrades(); // Refresh the list
+                    LoadActiveTrades();
+                    LoadTradeHistory();
                     SuccessMessage.Text = "Trade accepted successfully!";
                 }
                 catch (Exception ex)
@@ -189,7 +266,8 @@ namespace Steampunks.Views
                 try
                 {
                     _dbConnector.DeclineTrade(trade.TradeId);
-                    LoadActiveTrades(); // Refresh the list
+                    LoadActiveTrades();
+                    LoadTradeHistory();
                     SuccessMessage.Text = "Trade declined successfully!";
                 }
                 catch (Exception ex)
@@ -206,6 +284,18 @@ namespace Steampunks.Views
             public string PartnerName { get; set; }
             public string GameTitle { get; set; }
             public string TradeDescription { get; set; }
+            public bool IsSourceUser { get; set; }
+        }
+
+        private class TradeHistoryViewModel
+        {
+            public int TradeId { get; set; }
+            public string PartnerName { get; set; }
+            public string GameTitle { get; set; }
+            public string TradeDescription { get; set; }
+            public string TradeStatus { get; set; }
+            public string TradeDate { get; set; }
+            public SolidColorBrush StatusColor { get; set; }
             public bool IsSourceUser { get; set; }
         }
     }
