@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Steampunks.Views"
+    xmlns:entities="using:Steampunks.Domain.Entities"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
@@ -24,17 +25,29 @@
                     Orientation="Horizontal" 
                     Spacing="10"
                     Margin="0,0,0,20">
-            <ComboBox PlaceholderText="Game" Width="200"/>
-            <ComboBox PlaceholderText="Type" Width="200"/>
-            <TextBox PlaceholderText="Search inventory..." Width="300"/>
-            <Button Content="Create Trade Offer" Style="{StaticResource AccentButtonStyle}" Click="CreateTradeOffer_Click"/>
+            <ComboBox x:Name="GameSelector"
+                      PlaceholderText="Select Game"
+                      Width="200"
+                      ItemsSource="{x:Bind ViewModel.AvailableGames, Mode=OneWay}"
+                      SelectedItem="{x:Bind ViewModel.SelectedGame, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="entities:Game">
+                        <TextBlock Text="{x:Bind Title}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBox x:Name="SearchBox"
+                     PlaceholderText="Search items..."
+                     Width="300"
+                     Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </StackPanel>
 
         <GridView Grid.Row="2"
-                  SelectionMode="Multiple">
+                  ItemsSource="{x:Bind ViewModel.InventoryItems, Mode=OneWay}"
+                  SelectionMode="Single">
             <GridView.ItemTemplate>
-                <DataTemplate>
-                    <Grid Width="200" Height="250">
+                <DataTemplate x:DataType="entities:Item">
+                    <Grid Width="200" Height="250" Margin="10">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
@@ -42,10 +55,25 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <Image Grid.Row="0" Stretch="UniformToFill"/>
-                        <TextBlock Grid.Row="1" Text="{Binding Skin.Name}" Style="{StaticResource BodyTextBlockStyle}"/>
-                        <TextBlock Grid.Row="2" Text="{Binding Condition}" Style="{StaticResource CaptionTextBlockStyle}"/>
-                        <TextBlock Grid.Row="3" Text="{Binding CurrentValue}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <Image Grid.Row="0" 
+                               Source="/Assets/item_placeholder.png"
+                               Stretch="UniformToFill"/>
+                        <TextBlock Grid.Row="1" 
+                                   Text="{x:Bind ItemName}" 
+                                   Style="{StaticResource BodyTextBlockStyle}"
+                                   Margin="0,5,0,0"/>
+                        <TextBlock Grid.Row="2" 
+                                   Text="{x:Bind Game.Title}" 
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="Gray"
+                                   Margin="0,5,0,0"/>
+                        <TextBlock Grid.Row="3" 
+                                  Style="{StaticResource CaptionTextBlockStyle}"
+                                  Foreground="Green"
+                                  Margin="0,5,0,0">
+                            <Run Text="$"/>
+                            <Run Text="{x:Bind Price}"/>
+                        </TextBlock>
                     </Grid>
                 </DataTemplate>
             </GridView.ItemTemplate>
