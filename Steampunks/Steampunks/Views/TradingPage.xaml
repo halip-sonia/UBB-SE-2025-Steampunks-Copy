@@ -29,7 +29,18 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="0" Spacing="10">
+                        <StackPanel Grid.Row="0" 
+                                  Orientation="Horizontal" 
+                                  Spacing="10"
+                                  Margin="0,0,0,20">
+                            <TextBlock Text="Current User:" 
+                                     VerticalAlignment="Center"/>
+                            <ComboBox x:Name="UserComboBox" 
+                                    Width="200"
+                                    SelectionChanged="UserComboBox_SelectionChanged"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Spacing="10">
                             <TextBlock Text="Create New Trade Offer" Style="{StaticResource SubtitleTextBlockStyle}"/>
                             <ComboBox x:Name="GameComboBox" PlaceholderText="Select Game" Width="300"/>
                             <TextBox x:Name="RecipientTextBox" PlaceholderText="Recipient Username" Width="300"/>
