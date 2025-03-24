@@ -13,7 +13,7 @@ namespace Steampunks.Domain.Entities
         public bool AcceptedByDestinationUser { get; private set; }
         public Game TradeGame { get; private set; }
         public string TradeStatus { get; private set; }
-
+        
         private GameTrade() { } // For EF Core
 
         public GameTrade(User sourceUser, User destinationUser, Game game, string description)
