@@ -40,5 +40,43 @@ namespace Steampunks.DataLink
                 }
             }
         }
+
+        public static void AddSampleData()
+        {
+            var db = new DatabaseConnector();
+
+            // Add CS2 with skins
+            db.AddGameWithItems(
+                gameTitle: "Counter-Strike 2",
+                gamePrice: 0.0f,
+                genre: "FPS",
+                description: "The next evolution of Counter-Strike, featuring updated graphics and refined gameplay.",
+                items: new[]
+                {
+                    ("AK-47 | Asiimov", 50.0f, "A sci-fi themed skin for the AK-47"),
+                    ("M4A4 | Howl", 1500.0f, "A rare and coveted M4A4 skin"),
+                    ("AWP | Dragon Lore", 10000.0f, "The legendary Dragon Lore skin"),
+                    ("Desert Eagle | Blaze", 450.0f, "A blazing hot Desert Eagle skin"),
+                    ("Butterfly Knife | Fade", 2000.0f, "A rainbow-colored butterfly knife")
+                }
+            );
+
+            // Add Dota 2 with items
+            db.AddGameWithItems(
+                gameTitle: "Dota 2",
+                gamePrice: 0.0f,
+                genre: "MOBA",
+                description: "A complex MOBA game with over 100 unique heroes.",
+                items: new[]
+                {
+                    ("Dragonclaw Hook", 750.0f, "A legendary hook for Pudge"),
+                    ("Arcana: Demon Eater", 35.0f, "Special effects for Shadow Fiend"),
+                    ("Baby Roshan", 150.0f, "A cute courier skin"),
+                    ("Ethereal Flames War Dog", 1000.0f, "A rare courier with special effects")
+                }
+            );
+
+            System.Diagnostics.Debug.WriteLine("Sample data added successfully!");
+        }
     }
 } 
