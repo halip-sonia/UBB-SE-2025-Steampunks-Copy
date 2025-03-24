@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Steampunks.Domain.Entities;
+using Steampunks.Repository.Marketplace;
 
 namespace Steampunks.Services
 {

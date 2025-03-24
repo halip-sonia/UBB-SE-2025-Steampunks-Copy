@@ -44,5 +44,25 @@ namespace Steampunks.Domain.Entities
         {
             Description = description;
         }
+
+        public void SetItemId(int id)
+        {
+            ItemId = id;
+        }
+
+        public void SetIsListed(bool isListed)
+        {
+            IsListed = isListed;
+        }
+
+        public float GetPrice()
+        {
+            return Price;
+        }
+
+        public void SetPrice(float price)
+        {
+            Price = price;
+        }
     }
 } 

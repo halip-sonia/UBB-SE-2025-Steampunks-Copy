@@ -560,5 +560,188 @@ namespace Steampunks.DataLink
             }
             return trades;
         }
+
+        public List<Item> GetAllListings()
+        {
+            var listings = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Price as GamePrice
+                FROM Items i
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                WHERE i.IsListed = 1
+                ORDER BY i.Price DESC";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                            listings.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return listings;
+        }
+
+        public List<Item> GetListingsByGame(Game game)
+        {
+            var listings = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Price as GamePrice
+                FROM Items i
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                WHERE i.IsListed = 1 AND g.GameId = @GameId
+                ORDER BY i.Price DESC";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                            listings.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return listings;
+        }
+
+        public void AddListing(Item item)
+        {
+            const string query = @"
+                UPDATE Items 
+                SET IsListed = 1
+                WHERE ItemId = @ItemId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    OpenConnection();
+                    command.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public void RemoveListing(Item item)
+        {
+            const string query = @"
+                UPDATE Items 
+                SET IsListed = 0
+                WHERE ItemId = @ItemId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    OpenConnection();
+                    command.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public void UpdateListing(Item item)
+        {
+            const string query = @"
+                UPDATE Items 
+                SET ItemName = @ItemName,
+                    Price = @Price,
+                    Description = @Description
+                WHERE ItemId = @ItemId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    command.Parameters.AddWithValue("@ItemName", item.ItemName);
+                    command.Parameters.AddWithValue("@Price", item.Price);
+                    command.Parameters.AddWithValue("@Description", item.Description);
+                    
+                    OpenConnection();
+                    command.ExecuteNonQuery();
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
     }
 } 
