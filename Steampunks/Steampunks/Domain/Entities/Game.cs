@@ -4,6 +4,8 @@ namespace Steampunks.Domain.Entities
 {
     public class Game
     {
+        public string Id { get; set; }
+        public string Name { get; set; }
         public int GameId { get; private set; }
         public string Title { get; private set; }
         public float Price { get; private set; }
