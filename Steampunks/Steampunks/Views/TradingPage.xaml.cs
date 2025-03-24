@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections.ObjectModel;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
 
 namespace Steampunks.Views
 {
@@ -13,15 +15,19 @@ namespace Steampunks.Views
     {
         private readonly DatabaseConnector _dbConnector;
         private ObservableCollection<TradeViewModel> ActiveTrades { get; set; }
+        private ObservableCollection<TradeHistoryViewModel> TradeHistory { get; set; }
 
         public TradingPage()
         {
             InitializeComponent();
             _dbConnector = new DatabaseConnector();
             ActiveTrades = new ObservableCollection<TradeViewModel>();
+            TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
             ActiveTradesListView.ItemsSource = ActiveTrades;
+            TradeHistoryListView.ItemsSource = TradeHistory;
             LoadGames();
             LoadActiveTrades();
+            LoadTradeHistory();
         }
 
         private void LoadGames()
@@ -73,6 +79,43 @@ namespace Steampunks.Views
             {
                 ErrorMessage.Text = "Error loading active trades. Please try again later.";
                 System.Diagnostics.Debug.WriteLine($"Error loading active trades: {ex.Message}");
+            }
+        }
+
+        private void LoadTradeHistory()
+        {
+            try
+            {
+                var currentUser = _dbConnector.GetCurrentUser();
+                var trades = _dbConnector.GetTradeHistory();
+                TradeHistory.Clear();
+
+                foreach (var trade in trades)
+                {
+                    var isSourceUser = trade.GetSourceUser().UserId == currentUser.UserId;
+                    var partner = isSourceUser ? trade.GetDestinationUser() : trade.GetSourceUser();
+                    
+                    var statusColor = trade.TradeStatus == "Completed" 
+                        ? new SolidColorBrush(Colors.Green) 
+                        : new SolidColorBrush(Colors.Red);
+
+                    TradeHistory.Add(new TradeHistoryViewModel
+                    {
+                        TradeId = trade.TradeId,
+                        PartnerName = partner.Username,
+                        GameTitle = trade.GetTradeGame().Title,
+                        TradeDescription = trade.TradeDescription,
+                        TradeStatus = trade.TradeStatus,
+                        TradeDate = trade.TradeDate.ToString("MMM dd, yyyy HH:mm"),
+                        StatusColor = statusColor,
+                        IsSourceUser = isSourceUser
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.Text = "Error loading trade history. Please try again later.";
+                System.Diagnostics.Debug.WriteLine($"Error loading trade history: {ex.Message}");
             }
         }
 
@@ -158,7 +201,8 @@ namespace Steampunks.Views
                 try
                 {
                     _dbConnector.AcceptTrade(trade.TradeId);
-                    LoadActiveTrades(); // Refresh the list
+                    LoadActiveTrades(); // Refresh active trades
+                    LoadTradeHistory(); // Refresh trade history
                     SuccessMessage.Text = "Trade accepted successfully!";
                 }
                 catch (Exception ex)
@@ -189,7 +233,8 @@ namespace Steampunks.Views
                 try
                 {
                     _dbConnector.DeclineTrade(trade.TradeId);
-                    LoadActiveTrades(); // Refresh the list
+                    LoadActiveTrades(); // Refresh active trades
+                    LoadTradeHistory(); // Refresh trade history
                     SuccessMessage.Text = "Trade declined successfully!";
                 }
                 catch (Exception ex)
@@ -206,6 +251,18 @@ namespace Steampunks.Views
             public string PartnerName { get; set; }
             public string GameTitle { get; set; }
             public string TradeDescription { get; set; }
+            public bool IsSourceUser { get; set; }
+        }
+
+        private class TradeHistoryViewModel
+        {
+            public int TradeId { get; set; }
+            public string PartnerName { get; set; }
+            public string GameTitle { get; set; }
+            public string TradeDescription { get; set; }
+            public string TradeStatus { get; set; }
+            public string TradeDate { get; set; }
+            public SolidColorBrush StatusColor { get; set; }
             public bool IsSourceUser { get; set; }
         }
     }
