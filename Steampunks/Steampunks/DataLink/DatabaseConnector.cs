@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Data.SqlClient;
+using System.Data;
 using System.Collections.Generic;
 using Steampunks.Domain.Entities;
 
@@ -274,7 +275,6 @@ namespace Steampunks.DataLink
                 CloseConnection();
             }
         }
-
         public List<GameTrade> GetActiveGameTrades(int userId)
         {
             var trades = new List<GameTrade>();
