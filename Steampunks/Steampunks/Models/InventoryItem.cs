@@ -4,15 +4,41 @@ namespace Steampunks.Models
 {
     public class InventoryItem
     {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public int SkinId { get; set; }
-        public DateTime AcquiredDate { get; set; }
-        public bool IsTradeble { get; set; }
-        public string Condition { get; set; } = string.Empty;
-        public decimal CurrentValue { get; set; }
+        private int itemID;
+        private string itemName;
+        private Game correspondingGame;
+        private int marketPrice;
+        private string description;
+        private bool isListed;
 
-        public virtual User User { get; set; } = null!;
-        public virtual Skin Skin { get; set; } = null!;
+        public string getItemName()
+        {
+            return itemName;
+        }
+
+        public void setItemName(string itemName)
+        {
+            this.itemName = itemName;
+        }
+
+        public Game getCorrespondingGame()
+        {
+            return correspondingGame;
+        }
+
+        public void setCorrespondingGame(Game game)
+        {
+            this.correspondingGame = game;
+        }
+
+        public string getItemDescription()
+        {
+            return description;
+        }
+
+        public void setItemDescription(string description)
+        {
+            this.description = description;
+        }
     }
 } 
