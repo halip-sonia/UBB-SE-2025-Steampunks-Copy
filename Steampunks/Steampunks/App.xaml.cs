@@ -38,16 +38,15 @@ namespace Steampunks
             // Initialize the database
             try
             {
-                DatabaseInitializer.InitializeDatabase();
-                // Test the connection
                 var dbConnector = new DatabaseConnector();
-                if (dbConnector.TestConnection())
+                if (!dbConnector.TestConnection())
                 {
-                    System.Diagnostics.Debug.WriteLine("Database connection and query test successful!");
+                    System.Diagnostics.Debug.WriteLine("Database not initialized, initializing now...");
+                    DatabaseInitializer.InitializeDatabase();
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("Database connection test failed!");
+                    System.Diagnostics.Debug.WriteLine("Database already initialized, skipping initialization.");
                 }
             }
             catch (System.Exception ex)

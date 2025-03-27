@@ -13,6 +13,36 @@ namespace Steampunks.DataLink
         {
             try
             {
+                // First check if the database is already initialized
+                using (var connection = new SqlConnection(MasterConnectionString))
+                {
+                    connection.Open();
+                    using (var command = new SqlCommand("SELECT COUNT(*) FROM sys.databases WHERE name = 'SteampunksDB'", connection))
+                    {
+                        var dbExists = (int)command.ExecuteScalar() > 0;
+                        if (dbExists)
+                        {
+                            // Check if tables exist
+                            using (var steampunksConnection = new SqlConnection(@"Server=localhost;Database=SteampunksDB;Trusted_Connection=True;TrustServerCertificate=True;"))
+                            {
+                                steampunksConnection.Open();
+                                using (var checkCommand = new SqlCommand(@"
+                                    SELECT COUNT(*) 
+                                    FROM sys.tables 
+                                    WHERE name IN ('Users', 'Games', 'Items', 'UserInventory')", steampunksConnection))
+                                {
+                                    var tablesExist = (int)checkCommand.ExecuteScalar() == 4;
+                                    if (tablesExist)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine("Database is already initialized.");
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DataLink", "Scripts", "InitializeDatabase.sql");
                 
                 if (!File.Exists(scriptPath))
