@@ -131,4 +131,42 @@ BEGIN
     END
     ');
 END
+GO
+
+-- Create stored procedure for adding games with items
+IF NOT EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_AddGameWithItems')
+BEGIN
+    EXEC('
+    CREATE PROCEDURE sp_AddGameWithItems
+        @GameTitle NVARCHAR(100),
+        @GamePrice FLOAT,
+        @Genre NVARCHAR(50),
+        @Description NVARCHAR(MAX),
+        @ItemName NVARCHAR(100),
+        @ItemPrice FLOAT,
+        @ItemDescription NVARCHAR(MAX)
+    AS
+    BEGIN
+        DECLARE @GameId INT;
+        
+        -- Check if game exists
+        SELECT @GameId = GameId FROM Games WHERE Title = @GameTitle;
+        
+        -- If game doesn''t exist, create it
+        IF @GameId IS NULL
+        BEGIN
+            INSERT INTO Games (Title, Price, Genre, Description, Status)
+            VALUES (@GameTitle, @GamePrice, @Genre, @Description, ''Available'');
+            
+            SET @GameId = SCOPE_IDENTITY();
+        END
+        
+        -- Insert the item
+        INSERT INTO Items (ItemName, CorrespondingGameId, Price, Description, IsListed)
+        VALUES (@ItemName, @GameId, @ItemPrice, @ItemDescription, 0);
+        
+        SELECT @GameId AS GameId;
+    END
+    ');
+END
 GO 
