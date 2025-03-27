@@ -11,7 +11,7 @@ namespace Steampunks.Domain.Entities
         public int Rating { get; private set; }
         public DateTime ReviewDate { get; private set; }
 
-        private Review() { } // For EF Core
+        private Review() { } 
 
         public Review(User reviewer, Game game, string content, int rating)
         {
