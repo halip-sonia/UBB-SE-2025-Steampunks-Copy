@@ -15,7 +15,14 @@ namespace Steampunks.Views
         public InventoryPage()
         {
             InitializeComponent();
-            ViewModel = new InventoryViewModel();
+            
+            // Create and set the ViewModel with proper dependencies
+            var inventoryService = new InventoryService(
+                new InventoryRepository(),
+                new User("DefaultUser") // TODO: Replace with actual user from authentication
+            );
+            ViewModel = new InventoryViewModel(inventoryService);
+            this.DataContext = ViewModel;
         }
 
         private void CreateTradeOffer_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)

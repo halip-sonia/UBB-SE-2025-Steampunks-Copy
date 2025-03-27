@@ -3,6 +3,7 @@ using Steampunks.ViewModels;
 using Steampunks.Services;
 using Steampunks.Domain.Entities;
 using Windows.Foundation;
+using System;
 
 namespace Steampunks.Views
 {
@@ -13,7 +14,7 @@ namespace Steampunks.Views
             this.InitializeComponent();
             
             // Create and set the ViewModel
-            var marketplaceService = new MarketplaceService(new Repository.Marketplace.MarketplaceRepository(), new User("DefaultUser"));
+            var marketplaceService = new MarketplaceService(new Repository.Marketplace.MarketplaceRepository());
             this.DataContext = new MarketplaceViewModel(marketplaceService);
         }
 
@@ -28,26 +29,29 @@ namespace Steampunks.Views
                     var result = (ContentDialogResult)asyncInfo.GetResults();
                     if (result == ContentDialogResult.Secondary)
                     {
-                        // Buy button was clicked
-                        bool success = await viewModel.BuyItemAsync();
-                        if (success)
+                        try
                         {
-                            // Show success message
-                            var successDialog = new ContentDialog
+                            // Buy button was clicked
+                            bool success = await viewModel.BuyItemAsync();
+                            if (success)
                             {
-                                Title = "Success",
-                                Content = "Item purchased successfully!",
-                                CloseButtonText = "OK"
-                            };
-                            successDialog.ShowAsync();
+                                // Show success message
+                                var successDialog = new ContentDialog
+                                {
+                                    Title = "Success",
+                                    Content = "Item purchased successfully!",
+                                    CloseButtonText = "OK"
+                                };
+                                successDialog.ShowAsync();
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
                             // Show error message
                             var errorDialog = new ContentDialog
                             {
                                 Title = "Error",
-                                Content = "Failed to purchase item. Please try again.",
+                                Content = ex.Message,
                                 CloseButtonText = "OK"
                             };
                             errorDialog.ShowAsync();

@@ -20,6 +20,8 @@ namespace Steampunks.ViewModels
         private string _selectedRarity;
         private List<Item> _allCurrentItems;
         private Item _selectedItem;
+        private User _currentUser;
+        private ObservableCollection<User> _availableUsers;
 
         public ObservableCollection<Item> Items
         {
@@ -74,6 +76,7 @@ namespace Steampunks.ViewModels
                 OnPropertyChanged();
             }
         }
+
         public Item SelectedItem
         {
             get => _selectedItem;
@@ -83,11 +86,37 @@ namespace Steampunks.ViewModels
                 {
                     _selectedItem = value;
                     OnPropertyChanged(nameof(SelectedItem));
+                    OnPropertyChanged(nameof(CanBuyItem));
                 }
             }
         }
 
-        public bool CanBuyItem => SelectedItem != null && SelectedItem.IsListed;
+        public User CurrentUser
+        {
+            get => _currentUser;
+            set
+            {
+                if (_currentUser != value)
+                {
+                    _currentUser = value;
+                    _marketplaceService.SetCurrentUser(value);
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(CanBuyItem));
+                }
+            }
+        }
+
+        public ObservableCollection<User> AvailableUsers
+        {
+            get => _availableUsers;
+            set
+            {
+                _availableUsers = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool CanBuyItem => SelectedItem != null && SelectedItem.IsListed && CurrentUser != null && CurrentUser.WalletBalance >= SelectedItem.Price;
 
         public async Task<bool> BuyItemAsync()
         {
@@ -96,22 +125,26 @@ namespace Steampunks.ViewModels
 
             try
             {
-                // Here you would typically:
-                // 1. Check if user has enough balance
-                // 2. Process the transaction
-                // 3. Update the item's status
-                // 4. Update the UI
-                
-                // For now, we'll just simulate a successful purchase
-                SelectedItem.IsListed = false;
-                OnPropertyChanged(nameof(CanBuyItem));
-                return true;
+                bool success = _marketplaceService.BuyItem(SelectedItem);
+                if (success)
+                {
+                    // Refresh the items list
+                    LoadItems();
+                    return true;
+                }
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Handle specific error cases
+                throw new Exception(ex.Message);
             }
             catch (Exception)
             {
                 return false;
             }
         }
+
         public ObservableCollection<string> AvailableGames { get; set; }
         public ObservableCollection<string> AvailableTypes { get; set; }
         public ObservableCollection<string> AvailableRarities { get; set; }
@@ -119,8 +152,16 @@ namespace Steampunks.ViewModels
         public MarketplaceViewModel(MarketplaceService marketplaceService)
         {
             _marketplaceService = marketplaceService;
+            LoadUsers();
             LoadItems();
             InitializeCollections();
+        }
+
+        private void LoadUsers()
+        {
+            var users = _marketplaceService.GetAllUsers();
+            AvailableUsers = new ObservableCollection<User>(users);
+            CurrentUser = _marketplaceService.GetCurrentUser();
         }
 
         private void LoadItems()

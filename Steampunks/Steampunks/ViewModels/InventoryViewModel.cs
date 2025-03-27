@@ -5,11 +5,13 @@ using System.Runtime.CompilerServices;
 using Steampunks.Domain.Entities;
 using System.Linq;
 using System.Collections.Generic;
+using Steampunks.Services;
 
 namespace Steampunks.ViewModels
 {
     public class InventoryViewModel : INotifyPropertyChanged
     {
+        private readonly InventoryService _inventoryService;
         private ObservableCollection<Item> _inventoryItems;
         private ObservableCollection<Game> _availableGames;
         private Game _selectedGame;
@@ -20,51 +22,32 @@ namespace Steampunks.ViewModels
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public InventoryViewModel()
+        public InventoryViewModel(InventoryService inventoryService)
         {
+            _inventoryService = inventoryService ?? throw new ArgumentNullException(nameof(inventoryService));
             _inventoryItems = new ObservableCollection<Item>();
             _availableGames = new ObservableCollection<Game>();
             _allItems = new List<Item>();
             // Create the "All Games" option
             _allGamesOption = new Game("All Games", 0.0f, "", "Show items from all games");
-            InitializeHardcodedData();
+            InitializeData();
         }
 
-        private void InitializeHardcodedData()
+        private void InitializeData()
         {
-            // Create some sample games
-            var csgo = new Game("Counter-Strike 2", 0.0f, "FPS", "The next evolution of CS");
-            var dota = new Game("Dota 2", 0.0f, "MOBA", "A complex MOBA game");
-            var tf2 = new Game("Team Fortress 2", 0.0f, "FPS", "Classic team-based action");
-
+            // Get all items from inventory
+            _allItems = _inventoryService.GetAllItemsFromInventory();
+            
+            // Get unique games from items
+            var games = _allItems.Select(item => item.Game).Distinct().ToList();
+            
             // Initialize available games with "All Games" option first
             _availableGames.Clear();
             _availableGames.Add(_allGamesOption); // Add "All Games" as the first option
-            foreach (var game in new[] { csgo, dota, tf2 })
+            foreach (var game in games)
             {
                 _availableGames.Add(game);
             }
-
-            // Create sample items for each game
-            _allItems.Clear();
-            _allItems.AddRange(new[]
-            {
-                // CS2 Items
-                new Item("AK-47 | Asiimov", csgo, 50.0f, "A sci-fi themed skin for the AK-47"),
-                new Item("M4A4 | Howl", csgo, 1500.0f, "A rare and coveted M4A4 skin"),
-                new Item("AWP | Dragon Lore", csgo, 10000.0f, "The legendary Dragon Lore skin"),
-                new Item("Desert Eagle | Blaze", csgo, 450.0f, "A blazing hot Desert Eagle skin"),
-                
-                // Dota 2 Items
-                new Item("Dragonclaw Hook", dota, 750.0f, "A legendary hook for Pudge"),
-                new Item("Arcana: Demon Eater", dota, 35.0f, "Special effects for Shadow Fiend"),
-                new Item("Baby Roshan", dota, 150.0f, "A cute courier skin"),
-                
-                // TF2 Items
-                new Item("Unusual Team Captain", tf2, 200.0f, "A rare hat with special effects"),
-                new Item("Australium Rocket Launcher", tf2, 100.0f, "Golden rocket launcher"),
-                new Item("Mann Co. Supply Crate Key", tf2, 2.5f, "Used to open crates")
-            });
 
             // Set initial selection to "All Games"
             SelectedGame = _allGamesOption;
