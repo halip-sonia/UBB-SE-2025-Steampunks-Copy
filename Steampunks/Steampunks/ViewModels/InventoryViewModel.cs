@@ -6,19 +6,24 @@ using Steampunks.Domain.Entities;
 using System.Linq;
 using System.Collections.Generic;
 using Steampunks.Services;
+using Steampunks.DataLink;
 
 namespace Steampunks.ViewModels
 {
     public class InventoryViewModel : INotifyPropertyChanged
     {
         private readonly InventoryService _inventoryService;
+        private readonly DatabaseConnector _dbConnector;
         private ObservableCollection<Item> _inventoryItems;
         private ObservableCollection<Game> _availableGames;
+        private ObservableCollection<User> _availableUsers;
         private Game _selectedGame;
+        private User _selectedUser;
         private string _searchText;
-        private List<Item> _allItems;
+        private List<Item> _allCurrentItems;
         private bool _isUpdating;
         private readonly Game _allGamesOption;
+        private Item _selectedItem;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -53,6 +58,50 @@ namespace Steampunks.ViewModels
             SelectedGame = _allGamesOption;
         }
 
+        public InventoryViewModel(DatabaseConnector dbConnector)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Starting InventoryViewModel initialization...");
+                _dbConnector = dbConnector ?? throw new ArgumentNullException(nameof(dbConnector));
+                System.Diagnostics.Debug.WriteLine("DatabaseConnector validated.");
+
+                // Initialize collections first
+                _inventoryItems = new ObservableCollection<Item>();
+                _availableGames = new ObservableCollection<Game>();
+                _availableUsers = new ObservableCollection<User>();
+                _allCurrentItems = new List<Item>();
+                System.Diagnostics.Debug.WriteLine("Collections initialized.");
+
+                // Create the "All Games" option
+                _allGamesOption = new Game("All Games", 0.0f, "", "Show items from all games");
+                _availableGames.Add(_allGamesOption);
+                _selectedGame = _allGamesOption;
+                System.Diagnostics.Debug.WriteLine("All Games option created and added.");
+
+                // Load users
+                LoadUsers();
+                System.Diagnostics.Debug.WriteLine("Users loaded successfully.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in InventoryViewModel constructor: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                // Initialize with empty collections if there's an error
+                _inventoryItems = new ObservableCollection<Item>();
+                _availableGames = new ObservableCollection<Game>();
+                _availableUsers = new ObservableCollection<User>();
+                _allCurrentItems = new List<Item>();
+                _allGamesOption = new Game("All Games", 0.0f, "", "Show items from all games");
+                _availableGames.Add(_allGamesOption);
+                _selectedGame = _allGamesOption;
+            }
+        }
+
         public ObservableCollection<Item> InventoryItems
         {
             get => _inventoryItems;
@@ -79,16 +128,47 @@ namespace Steampunks.ViewModels
             }
         }
 
+        public ObservableCollection<User> AvailableUsers
+        {
+            get => _availableUsers;
+            private set
+            {
+                if (_availableUsers != value)
+                {
+                    _availableUsers = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public Game SelectedGame
         {
             get => _selectedGame;
             set
             {
-                if (_selectedGame != value && !_isUpdating)
+                if (_selectedGame != value)
                 {
                     _selectedGame = value;
                     OnPropertyChanged();
                     UpdateInventoryItems();
+                }
+            }
+        }
+
+        public User SelectedUser
+        {
+            get => _selectedUser;
+            set
+            {
+                if (_selectedUser != value && !_isUpdating)
+                {
+                    _selectedUser = value;
+                    OnPropertyChanged();
+                    if (_selectedUser != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"User selected: {_selectedUser.Username}");
+                        LoadInventoryItems();
+                    }
                 }
             }
         }
@@ -98,7 +178,7 @@ namespace Steampunks.ViewModels
             get => _searchText;
             set
             {
-                if (_searchText != value && !_isUpdating)
+                if (_searchText != value)
                 {
                     _searchText = value;
                     OnPropertyChanged();
@@ -107,35 +187,48 @@ namespace Steampunks.ViewModels
             }
         }
 
-        private void UpdateInventoryItems()
+        public Item SelectedItem
         {
+            get => _selectedItem;
+            set
+            {
+                if (_selectedItem != value)
+                {
+                    _selectedItem = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public void LoadInventoryItems()
+        {
+            if (_selectedUser == null) return;
+
             try
             {
                 _isUpdating = true;
-                IEnumerable<Item> filteredItems = _allItems;
-
-                // Filter by selected game, but only if not "All Games"
-                if (SelectedGame != null && SelectedGame != _allGamesOption)
+                System.Diagnostics.Debug.WriteLine($"Loading inventory for user: {_selectedUser.Username}");
+                _allCurrentItems = _dbConnector.GetUserInventory(_selectedUser.UserId);
+                System.Diagnostics.Debug.WriteLine($"Loaded {_allCurrentItems.Count} items");
+                
+                // Update available games - use Distinct() to prevent duplicates
+                _availableGames.Clear();
+                _availableGames.Add(_allGamesOption);
+                var uniqueGames = _allCurrentItems.Select(i => i.Game).Distinct(new GameComparer());
+                foreach (var game in uniqueGames)
                 {
-                    filteredItems = filteredItems.Where(item => 
-                        item.Game.Title == SelectedGame.Title);
+                    _availableGames.Add(game);
+                    System.Diagnostics.Debug.WriteLine($"Added game to filter: {game.Title}");
                 }
-
-                // Filter by search text
-                if (!string.IsNullOrWhiteSpace(SearchText))
-                {
-                    var searchLower = SearchText.ToLower();
-                    filteredItems = filteredItems.Where(item =>
-                        item.ItemName.ToLower().Contains(searchLower) ||
-                        item.Description.ToLower().Contains(searchLower));
-                }
-
-                // Update the display
+                
+                UpdateInventoryItems();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading inventory items: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                _allCurrentItems = new List<Item>();
                 _inventoryItems.Clear();
-                foreach (var item in filteredItems.ToList())
-                {
-                    _inventoryItems.Add(item);
-                }
             }
             finally
             {
@@ -143,11 +236,102 @@ namespace Steampunks.ViewModels
             }
         }
 
+        private void UpdateInventoryItems()
+        {
+            if (_isUpdating) return;
+
+            try
+            {
+                _isUpdating = true;
+                var filteredItems = _allCurrentItems.AsQueryable();
+
+                if (_selectedGame != null && _selectedGame != _allGamesOption)
+                {
+                    filteredItems = filteredItems.Where(item => item.Game != null && item.Game.GameId == _selectedGame.GameId);
+                }
+
+                if (!string.IsNullOrWhiteSpace(_searchText))
+                {
+                    filteredItems = filteredItems.Where(item =>
+                        item.ItemName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                        item.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+                }
+
+                _inventoryItems.Clear();
+                foreach (var item in filteredItems)
+                {
+                    _inventoryItems.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating inventory items: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                _inventoryItems.Clear();
+            }
+            finally
+            {
+                _isUpdating = false;
+            }
+        }
+
+        private void LoadUsers()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Starting to load users...");
+                var users = _dbConnector.GetAllUsers();
+                System.Diagnostics.Debug.WriteLine($"Retrieved {users.Count} users from database.");
+                
+                _availableUsers.Clear();
+                foreach (var user in users)
+                {
+                    _availableUsers.Add(user);
+                }
+                System.Diagnostics.Debug.WriteLine("Users added to AvailableUsers collection.");
+
+                // Set default selected user to first user
+                if (_availableUsers.Any())
+                {
+                    SelectedUser = _availableUsers.First();
+                    System.Diagnostics.Debug.WriteLine($"Default user set to: {SelectedUser.Username}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No users available in the database.");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                _availableUsers.Clear();
+            }
+        }
+
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            if (!_isUpdating)
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private class GameComparer : IEqualityComparer<Game>
+        {
+            public bool Equals(Game x, Game y)
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                if (x == null || y == null)
+                    return false;
+                return x.GameId == y.GameId;
+            }
+
+            public int GetHashCode(Game obj)
+            {
+                if (obj == null)
+                    return 0;
+                return obj.GameId.GetHashCode();
             }
         }
     }

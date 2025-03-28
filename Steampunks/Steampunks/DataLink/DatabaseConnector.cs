@@ -19,7 +19,7 @@ namespace Steampunks.DataLink
 
         public SqlConnection GetConnection()
         {
-            if (connection == null)
+            if (connection == null || connection.State == ConnectionState.Closed)
             {
                 connection = new SqlConnection(connectionString);
             }
@@ -28,7 +28,7 @@ namespace Steampunks.DataLink
 
         public void OpenConnection()
         {
-            if (connection?.State != System.Data.ConnectionState.Open)
+            if (connection?.State != ConnectionState.Open)
             {
                 connection?.Open();
             }
@@ -36,9 +36,22 @@ namespace Steampunks.DataLink
 
         public void CloseConnection()
         {
-            if (connection?.State != System.Data.ConnectionState.Closed)
+            if (connection?.State != ConnectionState.Closed)
             {
                 connection?.Close();
+            }
+        }
+
+        public void DisposeConnection()
+        {
+            if (connection != null)
+            {
+                if (connection.State != ConnectionState.Closed)
+                {
+                    connection.Close();
+                }
+                connection.Dispose();
+                connection = null;
             }
         }
 
@@ -52,10 +65,8 @@ namespace Steampunks.DataLink
                     OpenConnection();
                     using (var reader = command.ExecuteReader())
                     {
-                        bool hasGames = false;
                         while (reader.Read())
                         {
-                            hasGames = true;
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("Title")),
                                 (float)reader.GetDouble(reader.GetOrdinal("Price")),
@@ -64,14 +75,6 @@ namespace Steampunks.DataLink
                             );
                             game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
                             games.Add(game);
-                        }
-
-                        if (!hasGames)
-                        {
-                            // If no games exist, create test games
-                            CloseConnection();
-                            InsertTestGames();
-                            return GetAllGames(); // Recursive call to get the newly inserted games
                         }
                     }
                 }
@@ -133,11 +136,7 @@ namespace Steampunks.DataLink
                             user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
                             return user;
                         }
-                        
-                        // If no users exist, create test users
-                        CloseConnection();
-                        InsertTestUsers();
-                        return GetCurrentUser(); // Recursive call to get the newly inserted user
+                        return null;
                     }
                 }
                 finally
@@ -254,25 +253,21 @@ namespace Steampunks.DataLink
         {
             try
             {
-                using (var connection = GetConnection())
+                using (var connection = new SqlConnection(connectionString))
                 {
-                    OpenConnection();
-                    using (var command = new SqlCommand("SELECT 1", connection))
+                    connection.Open();
+                    using (var command = new SqlCommand("SELECT DB_NAME()", connection))
                     {
-                        command.ExecuteScalar();
-                        System.Diagnostics.Debug.WriteLine("Database query test successful!");
+                        var dbName = command.ExecuteScalar().ToString();
+                        System.Diagnostics.Debug.WriteLine($"Connected to database: {dbName}");
                         return true;
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Database query test failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Database connection test failed: {ex.Message}");
                 return false;
-            }
-            finally
-            {
-                CloseConnection();
             }
         }
         public List<GameTrade> GetActiveGameTrades(int userId)
@@ -964,6 +959,273 @@ namespace Steampunks.DataLink
             }
 
             return null;
+        }
+
+        public List<Item> GetUserInventory(int userId)
+        {
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Price as GamePrice,
+                    g.Status as GameStatus
+                FROM UserInventory ui
+                JOIN Items i ON ui.ItemId = i.ItemId
+                JOIN Games g ON ui.GameId = g.GameId
+                WHERE ui.UserId = @UserId
+                ORDER BY g.Title, i.Price";
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Executing GetUserInventory query for userId: {userId}");
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    OpenConnection();
+                    System.Diagnostics.Debug.WriteLine("Connection opened successfully");
+                    
+                    using (var reader = command.ExecuteReader())
+                    {
+                        System.Diagnostics.Debug.WriteLine("Query executed successfully");
+                        while (reader.Read())
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Found item: {reader.GetString(reader.GetOrdinal("ItemName"))}");
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                            // Set image path based on game and item name
+                            string imagePath = GetItemImagePath(item);
+                            item.SetImagePath(imagePath);
+
+                            items.Add(item);
+                        }
+                        System.Diagnostics.Debug.WriteLine($"Total items found: {items.Count}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return items;
+        }
+
+        private string GetItemImagePath(Item item)
+        {
+            try
+            {
+                string gameTitle = item.Game.Title.ToLower();
+                string itemName = item.ItemName.ToLower();
+
+                // Extract the weapon type from the item name (before the | character)
+                string weaponType = itemName.Contains("|") ? itemName.Split('|')[0].Trim().ToLower() : itemName.ToLower();
+                
+                // Return a path to a default image based on the weapon type
+                var path = $"ms-appx:///Assets/img/games/cs2/{weaponType}.png";
+                System.Diagnostics.Debug.WriteLine($"Generated image path for {itemName}: {path}");
+                return path;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                return "ms-appx:///Assets/img/games/default-item.png";
+            }
+        }
+
+        public void AddToUserInventory(int userId, int itemId, int gameId)
+        {
+            ExecuteStoredProcedure("sp_AddToUserInventory",
+                new SqlParameter("@UserId", userId),
+                new SqlParameter("@ItemId", itemId),
+                new SqlParameter("@GameId", gameId)
+            );
+        }
+
+        public void RemoveFromUserInventory(int userId, int itemId, int gameId)
+        {
+            ExecuteStoredProcedure("sp_RemoveFromUserInventory",
+                new SqlParameter("@UserId", userId),
+                new SqlParameter("@ItemId", itemId),
+                new SqlParameter("@GameId", gameId)
+            );
+        }
+
+        public void TestDatabaseData()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Testing database data...");
+                
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    
+                    // Test Users table
+                    using (var command = new SqlCommand("SELECT COUNT(*) FROM Users", connection))
+                    {
+                        var userCount = (int)command.ExecuteScalar();
+                        System.Diagnostics.Debug.WriteLine($"Users in database: {userCount}");
+                    }
+
+                    // Test Games table
+                    using (var command = new SqlCommand("SELECT COUNT(*) FROM Games", connection))
+                    {
+                        var gameCount = (int)command.ExecuteScalar();
+                        System.Diagnostics.Debug.WriteLine($"Games in database: {gameCount}");
+                    }
+
+                    // Test Items table
+                    using (var command = new SqlCommand("SELECT COUNT(*) FROM Items", connection))
+                    {
+                        var itemCount = (int)command.ExecuteScalar();
+                        System.Diagnostics.Debug.WriteLine($"Items in database: {itemCount}");
+                    }
+
+                    // Test UserInventory table
+                    using (var command = new SqlCommand("SELECT COUNT(*) FROM UserInventory", connection))
+                    {
+                        var inventoryCount = (int)command.ExecuteScalar();
+                        System.Diagnostics.Debug.WriteLine($"Items in UserInventory: {inventoryCount}");
+                    }
+
+                    // Test specific user's inventory
+                    using (var command = new SqlCommand(@"
+                        SELECT COUNT(*) 
+                        FROM UserInventory ui 
+                        JOIN Items i ON ui.ItemId = i.ItemId 
+                        JOIN Games g ON ui.GameId = g.GameId 
+                        WHERE ui.UserId = 1", connection))
+                    {
+                        var user1InventoryCount = (int)command.ExecuteScalar();
+                        System.Diagnostics.Debug.WriteLine($"Items in TestUser1's inventory: {user1InventoryCount}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in TestDatabaseData: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+        }
+
+        public void CheckDatabaseState()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("\n=== Database State Check ===");
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    // Check Users
+                    using (var command = new SqlCommand("SELECT UserId, Username FROM Users", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nUsers:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"User {reader.GetInt32(0)}: {reader.GetString(1)}");
+                            }
+                        }
+                    }
+
+                    // Check Games
+                    using (var command = new SqlCommand("SELECT GameId, Title FROM Games", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nGames:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Game {reader.GetInt32(0)}: {reader.GetString(1)}");
+                            }
+                        }
+                    }
+
+                    // Check Items
+                    using (var command = new SqlCommand("SELECT ItemId, ItemName, CorrespondingGameId FROM Items", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nItems:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Item {reader.GetInt32(0)}: {reader.GetString(1)} (GameId: {reader.GetInt32(2)})");
+                            }
+                        }
+                    }
+
+                    // Check UserInventory
+                    using (var command = new SqlCommand(@"
+                        SELECT ui.UserId, ui.GameId, ui.ItemId, u.Username, g.Title as GameTitle, i.ItemName 
+                        FROM UserInventory ui
+                        JOIN Users u ON ui.UserId = u.UserId
+                        JOIN Games g ON ui.GameId = g.GameId
+                        JOIN Items i ON ui.ItemId = i.ItemId", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nUserInventory:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"User {reader.GetString(3)} has {reader.GetString(5)} from {reader.GetString(4)}");
+                            }
+                        }
+                    }
+                }
+                System.Diagnostics.Debug.WriteLine("\n=== End Database State Check ===\n");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking database state: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
     }
 } 

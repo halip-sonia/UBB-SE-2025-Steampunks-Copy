@@ -37,6 +37,11 @@ namespace Steampunks.Domain.Entities
             set => _price = value;
         }
 
+        public string PriceDisplay
+        {
+            get => $"${_price:F2}";
+        }
+
         public string Description
         {
             get => _description;
