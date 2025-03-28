@@ -1,30 +1,32 @@
-using System;
-using System.Collections.Generic;
+using Steampunks.DataLink;
 using Steampunks.Domain.Entities;
-using Steampunks.Repository.GameRepo;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Steampunks.Services
 {
     public class GameService
     {
-        private readonly GameRepository _gameRepo;
+        private readonly DatabaseConnector _dbConnector;
 
-        public GameService(GameRepository gameRepo)
+        public GameService(DatabaseConnector dbConnector)
         {
-            _gameRepo = gameRepo ?? throw new ArgumentNullException(nameof(gameRepo));
+            _dbConnector = dbConnector;
         }
 
-        public List<Game> GetGames()
+        public async Task<List<Game>> GetAllGamesAsync()
         {
-            return _gameRepo.GetGames();
+            return await Task.Run(() => _dbConnector.GetAllGames());
         }
 
-        public Game GetGameById(int gameId)
+        public async Task<Game> GetGameByIdAsync(int gameId)
         {
-            if (gameId <= 0)
-                throw new ArgumentException("Game ID must be positive", nameof(gameId));
+            return await Task.Run(() => _dbConnector.GetGameById(gameId));
+        }
 
-            return _gameRepo.GetGameById(gameId);
+        public async Task<bool> UpdateGameAsync(Game game)
+        {
+            return await Task.Run(() => _dbConnector.UpdateGame(game));
         }
     }
 } 

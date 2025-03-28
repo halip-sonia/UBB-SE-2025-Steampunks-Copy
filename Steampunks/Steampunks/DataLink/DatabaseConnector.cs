@@ -1232,5 +1232,573 @@ namespace Steampunks.DataLink
                 throw;
             }
         }
+
+        public void CreateItemTrade(ItemTrade trade)
+        {
+            const string insertTrade = @"
+                INSERT INTO ItemTrades (SourceUserId, DestinationUserId, GameOfTradeId, TradeDate, TradeDescription, TradeStatus, AcceptedBySourceUser, AcceptedByDestinationUser)
+                OUTPUT INSERTED.TradeId
+                VALUES (@SourceUserId, @DestinationUserId, @GameId, @TradeDate, @TradeDescription, @TradeStatus, @AcceptedBySourceUser, @AcceptedByDestinationUser)";
+
+            const string insertTradeDetails = @"
+                INSERT INTO ItemTradeDetails (TradeId, ItemId, IsSourceUserItem)
+                VALUES (@TradeId, @ItemId, @IsSourceUserItem)";
+
+            try
+            {
+                OpenConnection();
+                using (var transaction = GetConnection().BeginTransaction())
+                {
+                    try
+                    {
+                        // Insert trade
+                        int tradeId;
+                        using (var command = new SqlCommand(insertTrade, GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@SourceUserId", trade.SourceUser.UserId);
+                            command.Parameters.AddWithValue("@DestinationUserId", trade.DestinationUser.UserId);
+                            command.Parameters.AddWithValue("@GameId", trade.GameOfTrade.GameId);
+                            command.Parameters.AddWithValue("@TradeDate", trade.TradeDate);
+                            command.Parameters.AddWithValue("@TradeDescription", trade.TradeDescription);
+                            command.Parameters.AddWithValue("@TradeStatus", trade.TradeStatus);
+                            command.Parameters.AddWithValue("@AcceptedBySourceUser", trade.AcceptedBySourceUser);
+                            command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
+                            tradeId = (int)command.ExecuteScalar();
+                        }
+
+                        // Insert source user items
+                        foreach (var item in trade.SourceUserItems)
+                        {
+                            using (var command = new SqlCommand(insertTradeDetails, GetConnection(), transaction))
+                            {
+                                command.Parameters.AddWithValue("@TradeId", tradeId);
+                                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                                command.Parameters.AddWithValue("@IsSourceUserItem", true);
+                                command.ExecuteNonQuery();
+                            }
+                        }
+
+                        // Insert destination user items
+                        foreach (var item in trade.DestinationUserItems)
+                        {
+                            using (var command = new SqlCommand(insertTradeDetails, GetConnection(), transaction))
+                            {
+                                command.Parameters.AddWithValue("@TradeId", tradeId);
+                                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                                command.Parameters.AddWithValue("@IsSourceUserItem", false);
+                                command.ExecuteNonQuery();
+                            }
+                        }
+
+                        transaction.Commit();
+                        trade.SetTradeId(tradeId);
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public List<ItemTrade> GetActiveItemTrades(int userId)
+        {
+            var trades = new List<ItemTrade>();
+            const string tradesQuery = @"
+                SELECT t.*, 
+                       su.UserId as SourceUserId, su.Username as SourceUsername,
+                       du.UserId as DestUserId, du.Username as DestUsername,
+                       g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
+                FROM ItemTrades t
+                JOIN Users su ON t.SourceUserId = su.UserId
+                JOIN Users du ON t.DestinationUserId = du.UserId
+                JOIN Games g ON t.GameOfTradeId = g.GameId
+                WHERE (t.SourceUserId = @UserId OR t.DestinationUserId = @UserId)
+                AND t.TradeStatus = 'Pending'";
+
+            const string itemsQuery = @"
+                SELECT i.*, td.IsSourceUserItem,
+                       g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
+                FROM ItemTradeDetails td
+                JOIN Items i ON td.ItemId = i.ItemId
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                WHERE td.TradeId = @TradeId";
+
+            try
+            {
+                OpenConnection();
+                
+                // First, get all trades
+                using (var command = new SqlCommand(tradesQuery, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var sourceUser = new User(
+                                reader.GetString(reader.GetOrdinal("SourceUsername")));
+                            sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
+
+                            var destUser = new User(
+                                reader.GetString(reader.GetOrdinal("DestUsername")));
+                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                            var trade = new ItemTrade(
+                                sourceUser,
+                                destUser,
+                                game,
+                                reader.GetString(reader.GetOrdinal("TradeDescription"))
+                            );
+                            trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
+                            trades.Add(trade);
+                        }
+                    }
+                }
+
+                // Then, for each trade, get its items
+                foreach (var trade in trades)
+                {
+                    using (var command = new SqlCommand(itemsQuery, GetConnection()))
+                    {
+                        command.Parameters.AddWithValue("@TradeId", trade.TradeId);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var game = new Game(
+                                    reader.GetString(reader.GetOrdinal("GameTitle")),
+                                    (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                    reader.GetString(reader.GetOrdinal("Genre")),
+                                    reader.GetString(reader.GetOrdinal("GameDescription"))
+                                );
+                                game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                                var item = new Item(
+                                    reader.GetString(reader.GetOrdinal("ItemName")),
+                                    game,
+                                    (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                    reader.GetString(reader.GetOrdinal("Description"))
+                                );
+                                item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                                item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                                bool isSourceUserItem = reader.GetBoolean(reader.GetOrdinal("IsSourceUserItem"));
+                                if (isSourceUserItem)
+                                {
+                                    trade.AddSourceUserItem(item);
+                                }
+                                else
+                                {
+                                    trade.AddDestinationUserItem(item);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return trades;
+        }
+
+        public List<ItemTrade> GetItemTradeHistory(int userId)
+        {
+            var trades = new List<ItemTrade>();
+            const string tradesQuery = @"
+                SELECT t.*, 
+                       su.UserId as SourceUserId, su.Username as SourceUsername,
+                       du.UserId as DestUserId, du.Username as DestUsername,
+                       g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
+                FROM ItemTrades t
+                JOIN Users su ON t.SourceUserId = su.UserId
+                JOIN Users du ON t.DestinationUserId = du.UserId
+                JOIN Games g ON t.GameOfTradeId = g.GameId
+                WHERE (t.SourceUserId = @UserId OR t.DestinationUserId = @UserId)
+                AND t.TradeStatus IN ('Completed', 'Declined')";
+
+            const string itemsQuery = @"
+                SELECT i.*, td.IsSourceUserItem,
+                       g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
+                FROM ItemTradeDetails td
+                JOIN Items i ON td.ItemId = i.ItemId
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                WHERE td.TradeId = @TradeId";
+
+            try
+            {
+                OpenConnection();
+                
+                // First, get all trades
+                using (var command = new SqlCommand(tradesQuery, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var sourceUser = new User(
+                                reader.GetString(reader.GetOrdinal("SourceUsername")));
+                            sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
+
+                            var destUser = new User(
+                                reader.GetString(reader.GetOrdinal("DestUsername")));
+                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                            var trade = new ItemTrade(
+                                sourceUser,
+                                destUser,
+                                game,
+                                reader.GetString(reader.GetOrdinal("TradeDescription"))
+                            );
+                            trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
+                            trades.Add(trade);
+                        }
+                    }
+                }
+
+                // Then, for each trade, get its items
+                foreach (var trade in trades)
+                {
+                    using (var command = new SqlCommand(itemsQuery, GetConnection()))
+                    {
+                        command.Parameters.AddWithValue("@TradeId", trade.TradeId);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var game = new Game(
+                                    reader.GetString(reader.GetOrdinal("GameTitle")),
+                                    (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                    reader.GetString(reader.GetOrdinal("Genre")),
+                                    reader.GetString(reader.GetOrdinal("GameDescription"))
+                                );
+                                game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                                var item = new Item(
+                                    reader.GetString(reader.GetOrdinal("ItemName")),
+                                    game,
+                                    (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                    reader.GetString(reader.GetOrdinal("Description"))
+                                );
+                                item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                                item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                                bool isSourceUserItem = reader.GetBoolean(reader.GetOrdinal("IsSourceUserItem"));
+                                if (isSourceUserItem)
+                                {
+                                    trade.AddSourceUserItem(item);
+                                }
+                                else
+                                {
+                                    trade.AddDestinationUserItem(item);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return trades;
+        }
+
+        public void TransferItem(int itemId, int fromUserId, int toUserId)
+        {
+            const string query = @"
+                UPDATE UserInventory
+                SET UserId = @ToUserId
+                WHERE ItemId = @ItemId AND UserId = @FromUserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@ItemId", itemId);
+                    command.Parameters.AddWithValue("@FromUserId", fromUserId);
+                    command.Parameters.AddWithValue("@ToUserId", toUserId);
+                    OpenConnection();
+                    int rowsAffected = command.ExecuteNonQuery();
+                    if (rowsAffected == 0)
+                    {
+                        throw new Exception($"Failed to transfer item {itemId} from user {fromUserId} to user {toUserId}");
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public User GetUserById(int userId)
+        {
+            const string query = @"
+                SELECT UserId, Username, WalletBalance, Points, IsDeveloper
+                FROM Users
+                WHERE UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var user = new User(reader.GetString(reader.GetOrdinal("Username")));
+                            user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
+                            return user;
+                        }
+                        return null;
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public bool UpdateUser(User user)
+        {
+            const string query = @"
+                UPDATE Users
+                SET Username = @Username,
+                    WalletBalance = @WalletBalance,
+                    Points = @PointBalance,
+                    IsDeveloper = @IsDeveloper
+                WHERE UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    command.Parameters.AddWithValue("@Username", user.Username);
+                    command.Parameters.AddWithValue("@WalletBalance", user.WalletBalance);
+                    command.Parameters.AddWithValue("@PointBalance", user.PointBalance);
+                    command.Parameters.AddWithValue("@IsDeveloper", user.IsDeveloper);
+                    OpenConnection();
+                    int rowsAffected = command.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public bool UpdateGame(Game game)
+        {
+            const string query = @"
+                UPDATE Games
+                SET Title = @Title,
+                    Price = @Price,
+                    Genre = @Genre,
+                    Description = @Description
+                WHERE GameId = @GameId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@Title", game.Title);
+                    command.Parameters.AddWithValue("@Price", game.Price);
+                    command.Parameters.AddWithValue("@Genre", game.Genre);
+                    command.Parameters.AddWithValue("@Description", game.Description);
+                    OpenConnection();
+                    int rowsAffected = command.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
+
+        public List<Item> GetUserItems(int userId)
+        {
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Price as GamePrice,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Status as GameStatus
+                FROM UserInventory ui
+                JOIN Items i ON ui.ItemId = i.ItemId
+                JOIN Games g ON ui.GameId = g.GameId
+                WHERE ui.UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+
+            return items;
+        }
+
+        public void UpdateItemTrade(ItemTrade trade)
+        {
+            const string updateTradeQuery = @"
+                UPDATE ItemTrades 
+                SET TradeStatus = @TradeStatus,
+                    AcceptedBySourceUser = @AcceptedBySourceUser,
+                    AcceptedByDestinationUser = @AcceptedByDestinationUser
+                WHERE TradeId = @TradeId";
+
+            const string getTradeItemsQuery = @"
+                SELECT ItemId, IsSourceUserItem
+                FROM ItemTradeDetails
+                WHERE TradeId = @TradeId";
+
+            try
+            {
+                OpenConnection();
+                using (var transaction = GetConnection().BeginTransaction())
+                {
+                    try
+                    {
+                        // First update the trade status
+                        using (var command = new SqlCommand(updateTradeQuery, GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@TradeId", trade.TradeId);
+                            command.Parameters.AddWithValue("@TradeStatus", trade.TradeStatus);
+                            command.Parameters.AddWithValue("@AcceptedBySourceUser", trade.AcceptedBySourceUser);
+                            command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // If the trade is completed, transfer the items
+                        if (trade.TradeStatus == "Completed")
+                        {
+                            // Get all items involved in the trade
+                            var itemsToTransfer = new List<(int ItemId, bool IsSourceUserItem)>();
+                            using (var command = new SqlCommand(getTradeItemsQuery, GetConnection(), transaction))
+                            {
+                                command.Parameters.AddWithValue("@TradeId", trade.TradeId);
+                                using (var reader = command.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        itemsToTransfer.Add((
+                                            reader.GetInt32(reader.GetOrdinal("ItemId")),
+                                            reader.GetBoolean(reader.GetOrdinal("IsSourceUserItem"))
+                                        ));
+                                    }
+                                }
+                            }
+
+                            // Transfer each item
+                            foreach (var (itemId, isSourceUserItem) in itemsToTransfer)
+                            {
+                                int fromUserId = isSourceUserItem ? trade.SourceUser.UserId : trade.DestinationUser.UserId;
+                                int toUserId = isSourceUserItem ? trade.DestinationUser.UserId : trade.SourceUser.UserId;
+
+                                const string transferQuery = @"
+                                    UPDATE UserInventory
+                                    SET UserId = @ToUserId
+                                    WHERE ItemId = @ItemId AND UserId = @FromUserId";
+
+                                using (var command = new SqlCommand(transferQuery, GetConnection(), transaction))
+                                {
+                                    command.Parameters.AddWithValue("@ItemId", itemId);
+                                    command.Parameters.AddWithValue("@FromUserId", fromUserId);
+                                    command.Parameters.AddWithValue("@ToUserId", toUserId);
+                                    int rowsAffected = command.ExecuteNonQuery();
+                                    if (rowsAffected == 0)
+                                    {
+                                        throw new Exception($"Failed to transfer item {itemId} from user {fromUserId} to user {toUserId}");
+                                    }
+                                }
+                            }
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            finally
+            {
+                CloseConnection();
+            }
+        }
     }
 } 

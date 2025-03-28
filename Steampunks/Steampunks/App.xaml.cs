@@ -16,6 +16,11 @@ using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Steampunks.DataLink;
+using Microsoft.Extensions.DependencyInjection;
+using Steampunks.Services;
+using Steampunks.ViewModels;
+using Steampunks.Views;
+using Steampunks.Domain.Entities;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -27,6 +32,11 @@ namespace Steampunks
     /// </summary>
     public partial class App : Application
     {
+        private Window? m_window;
+        private readonly IServiceCollection services;
+
+        public static User CurrentUser { get; private set; }
+
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -34,6 +44,8 @@ namespace Steampunks
         public App()
         {
             this.InitializeComponent();
+            services = new ServiceCollection();
+            ConfigureServices();
 
             // Initialize the database
             try
@@ -67,6 +79,41 @@ namespace Steampunks
             m_window.Activate();
         }
 
-        private Window? m_window;
+        private void ConfigureServices()
+        {
+            // Add navigation services
+            services.AddTransient<INavigationViewService, NavigationViewService>();
+            services.AddSingleton<INavigationService, NavigationService>();
+            services.AddSingleton<IPageService, PageService>();
+
+            // Add database services
+            services.AddSingleton<DatabaseConnector>();
+
+            // Add application services
+            services.AddTransient<UserService>();
+            services.AddTransient<GameService>();
+            services.AddTransient<TradeService>();
+
+            // Add view models
+            services.AddTransient<TradeViewModel>();
+
+            // Configure pages
+            services.Configure<PageServiceOptions>(options =>
+            {
+                options.Configure<TradeViewModel, TradeView>();
+            });
+        }
+
+        public static T GetService<T>()
+            where T : class
+        {
+            if ((App.Current as App)?.services == null)
+            {
+                throw new InvalidOperationException("Cannot get service before app initialization");
+            }
+
+            var serviceProvider = ((App)Current).services.BuildServiceProvider();
+            return serviceProvider.GetService<T>() ?? throw new InvalidOperationException($"Service {typeof(T).Name} not found");
+        }
     }
 }
