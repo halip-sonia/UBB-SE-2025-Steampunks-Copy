@@ -71,16 +71,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="Assets\img\games\cs2\ak47-asiimov.png">
+    <Content Update="Assets\img\games\cs2\1.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="Assets\img\games\cs2\awp-neo-noir.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\img\games\cs2\dragon-lore.png">
+    <Content Update="Assets\img\games\cs2\3.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\img\games\cs2\m4a4-howl.png">
+    <Content Update="Assets\img\games\cs2\2.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="Assets\img\games\cs2\usp-neo-noir.png">
