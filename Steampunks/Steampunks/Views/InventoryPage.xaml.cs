@@ -153,7 +153,18 @@ namespace Steampunks.Views
             if (result == ContentDialogResult.Primary)
             {
                 bool success = await ViewModel.SellItemAsync(item);
-                if (!success)
+                if (success)
+                {
+                    var successDialog = new ContentDialog
+                    {
+                        XamlRoot = this.XamlRoot,
+                        Title = "Success",
+                        Content = $"{item.ItemName} has been successfully listed for sale!",
+                        CloseButtonText = "OK"
+                    };
+                    await successDialog.ShowAsync();
+                }
+                else
                 {
                     var errorDialog = new ContentDialog
                     {
