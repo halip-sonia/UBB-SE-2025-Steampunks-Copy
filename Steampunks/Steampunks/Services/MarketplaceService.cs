@@ -98,6 +98,9 @@ namespace Steampunks.Services
             if (!item.IsListed)
                 throw new InvalidOperationException("Item is not listed for sale");
 
+            if (_currentUser == null)
+                throw new InvalidOperationException("No user selected");
+
             try
             {
                 // Start transaction
@@ -106,7 +109,27 @@ namespace Steampunks.Services
                 {
                     try
                     {
-                        // Add item to user's inventory
+                        // Get the current owner's ID
+                        int currentOwnerId;
+                        using (var command = new SqlCommand(@"
+                            SELECT UserId 
+                            FROM UserInventory 
+                            WHERE ItemId = @ItemId", _dbConnector.GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                            currentOwnerId = (int)command.ExecuteScalar();
+                        }
+
+                        // Remove item from current owner's inventory
+                        using (var command = new SqlCommand(@"
+                            DELETE FROM UserInventory 
+                            WHERE ItemId = @ItemId", _dbConnector.GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // Add item to buyer's inventory
                         using (var command = new SqlCommand(@"
                             INSERT INTO UserInventory (UserId, GameId, ItemId)
                             VALUES (@UserId, @GameId, @ItemId)", _dbConnector.GetConnection(), transaction))
@@ -131,10 +154,12 @@ namespace Steampunks.Services
                         transaction.Commit();
                         return true;
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        System.Diagnostics.Debug.WriteLine($"Error in BuyItem transaction: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                         transaction.Rollback();
-                        throw;
+                        throw new InvalidOperationException("Failed to complete purchase. Please try again.");
                     }
                 }
             }

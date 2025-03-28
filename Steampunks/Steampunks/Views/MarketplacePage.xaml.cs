@@ -35,6 +35,20 @@ namespace Steampunks.Views
                     {
                         try
                         {
+                            // Check if a user is selected
+                            if (viewModel.CurrentUser == null)
+                            {
+                                var errorDialog = new ContentDialog
+                                {
+                                    Title = "Error",
+                                    Content = "Please select a user before buying items.",
+                                    CloseButtonText = "OK",
+                                    XamlRoot = this.XamlRoot
+                                };
+                                await errorDialog.ShowAsync();
+                                return;
+                            }
+
                             // Buy button was clicked
                             bool success = await viewModel.BuyItemAsync();
                             if (success)
@@ -45,22 +59,38 @@ namespace Steampunks.Views
                                     Title = "Success",
                                     Content = "Item purchased successfully!",
                                     CloseButtonText = "OK",
-                                    XamlRoot = this.XamlRoot // Set XamlRoot for success dialog
+                                    XamlRoot = this.XamlRoot
                                 };
                                 await successDialog.ShowAsync();
                             }
                         }
-                        catch (Exception ex)
+                        catch (InvalidOperationException ex)
                         {
-                            // Show error message
+                            // Show specific error message
                             var errorDialog = new ContentDialog
                             {
                                 Title = "Error",
                                 Content = ex.Message,
                                 CloseButtonText = "OK",
-                                XamlRoot = this.XamlRoot // Set XamlRoot for error dialog
+                                XamlRoot = this.XamlRoot
                             };
                             await errorDialog.ShowAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            // Show generic error message
+                            var errorDialog = new ContentDialog
+                            {
+                                Title = "Error",
+                                Content = "An unexpected error occurred. Please try again.",
+                                CloseButtonText = "OK",
+                                XamlRoot = this.XamlRoot
+                            };
+                            await errorDialog.ShowAsync();
+                            
+                            // Log the error
+                            System.Diagnostics.Debug.WriteLine($"Error in GridView_ItemClick: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                         }
                     }
                 };

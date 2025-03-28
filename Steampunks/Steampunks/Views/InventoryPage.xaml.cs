@@ -130,5 +130,41 @@ namespace Steampunks.Views
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
+
+        private async void SellItem_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var item = button?.DataContext as Item;
+            
+            if (item == null) return;
+
+            var dialog = new ContentDialog
+            {
+                XamlRoot = this.XamlRoot,
+                Title = "Confirm Sale",
+                Content = $"Are you sure you want to sell {item.ItemName}?",
+                PrimaryButtonText = "Yes",
+                CloseButtonText = "No",
+                DefaultButton = ContentDialogButton.Close
+            };
+
+            var result = await dialog.ShowAsync();
+            
+            if (result == ContentDialogResult.Primary)
+            {
+                bool success = await ViewModel.SellItemAsync(item);
+                if (!success)
+                {
+                    var errorDialog = new ContentDialog
+                    {
+                        XamlRoot = this.XamlRoot,
+                        Title = "Error",
+                        Content = "Failed to sell the item. Please try again.",
+                        CloseButtonText = "OK"
+                    };
+                    await errorDialog.ShowAsync();
+                }
+            }
+        }
     }
 } 

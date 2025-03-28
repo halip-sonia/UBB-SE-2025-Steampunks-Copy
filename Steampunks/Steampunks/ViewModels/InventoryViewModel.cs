@@ -7,6 +7,8 @@ using System.Linq;
 using System.Collections.Generic;
 using Steampunks.Services;
 using Steampunks.DataLink;
+using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 
 namespace Steampunks.ViewModels
 {
@@ -245,11 +247,16 @@ namespace Steampunks.ViewModels
                 _isUpdating = true;
                 var filteredItems = _allCurrentItems.AsQueryable();
 
+                // Filter out listed items
+                filteredItems = filteredItems.Where(item => !item.IsListed);
+
+                // Apply game filter if a specific game is selected
                 if (_selectedGame != null && _selectedGame != _allGamesOption)
                 {
                     filteredItems = filteredItems.Where(item => item.Game != null && item.Game.GameId == _selectedGame.GameId);
                 }
 
+                // Apply search filter if there's search text
                 if (!string.IsNullOrWhiteSpace(_searchText))
                 {
                     filteredItems = filteredItems.Where(item =>
@@ -356,6 +363,58 @@ namespace Steampunks.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading available games: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        public async Task<bool> SellItemAsync(Item item)
+        {
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            try
+            {
+                // Start transaction
+                _dbConnector.OpenConnection();
+                using (var transaction = _dbConnector.GetConnection().BeginTransaction())
+                {
+                    try
+                    {
+                        // Update item's listed status
+                        using (var command = new SqlCommand(@"
+                            UPDATE Items 
+                            SET IsListed = 1
+                            WHERE ItemId = @ItemId", _dbConnector.GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // Commit transaction
+                        transaction.Commit();
+                        
+                        // Refresh the inventory items after successful transaction
+                        LoadInventoryItems();
+                        
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error in transaction: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error selling item: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                _dbConnector.CloseConnection();
             }
         }
     }

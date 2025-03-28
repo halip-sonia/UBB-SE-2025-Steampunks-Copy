@@ -120,8 +120,8 @@ namespace Steampunks.ViewModels
 
         public async Task<bool> BuyItemAsync()
         {
-            if (SelectedItem == null || !SelectedItem.IsListed)
-                return false;
+            if (SelectedItem == null || !SelectedItem.IsListed || CurrentUser == null)
+                throw new InvalidOperationException("Cannot buy item: Invalid state");
 
             try
             {
@@ -132,16 +132,18 @@ namespace Steampunks.ViewModels
                     LoadItems();
                     return true;
                 }
-                return false;
+                throw new InvalidOperationException("Failed to buy item");
             }
             catch (InvalidOperationException ex)
             {
-                // Handle specific error cases
-                throw new Exception(ex.Message);
+                // Re-throw specific error messages
+                throw;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                System.Diagnostics.Debug.WriteLine($"Error buying item: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw new InvalidOperationException("An error occurred while buying the item. Please try again.");
             }
         }
 

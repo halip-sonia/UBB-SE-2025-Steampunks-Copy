@@ -5,12 +5,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Steampunks.Views"
     xmlns:converters="using:Steampunks.Converters"
+    xmlns:entities="using:Steampunks.Domain.Entities"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
     <Page.Resources>
         <converters:PriceConverter x:Key="PriceConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
     </Page.Resources>
 
     <Grid Padding="20">
@@ -43,31 +45,25 @@
                   IsItemClickEnabled="True"
                   ItemClick="ListView_ItemClick">
             <ListView.ItemTemplate>
-                <DataTemplate>
-                    <Grid Padding="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+                <DataTemplate x:DataType="entities:Item">
+                    <Grid Width="200" Height="250" Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         
-                        <Image Grid.Column="0" 
-                               Source="{Binding ImagePath}" 
-                               Width="100" 
-                               Height="100" 
-                               Stretch="UniformToFill"
-                               Margin="0,0,10,0"/>
-                        
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Text="{Binding ItemName}" 
-                                     Style="{StaticResource TitleLargeTextBlockStyle}"/>
-                            <TextBlock Text="{Binding Game.Title}" 
-                                     Style="{StaticResource BodyTextBlockStyle}"/>
-                            <TextBlock Text="{Binding Description}" 
-                                     Style="{StaticResource BodyTextBlockStyle}"
-                                     TextWrapping="Wrap"/>
-                            <TextBlock Text="{Binding Price, Converter={StaticResource PriceConverter}}" 
-                                     Style="{StaticResource BodyTextBlockStyle}"/>
-                        </StackPanel>
+                        <Image Grid.Row="0" Source="{x:Bind ImagePath}" Height="150" Width="150" 
+                               Stretch="Uniform" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Row="1" Text="{x:Bind ItemName}" 
+                                   HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="2" Text="{x:Bind Price}" 
+                                   HorizontalAlignment="Center"/>
+                        <Button Grid.Row="3" Content="Sell Item" 
+                                Click="SellItem_Click" 
+                                HorizontalAlignment="Center"
+                                IsEnabled="{x:Bind IsListed, Converter={StaticResource InverseBooleanConverter}}"/>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
