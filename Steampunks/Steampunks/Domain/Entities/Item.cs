@@ -69,18 +69,24 @@ namespace Steampunks.Domain.Entities
             _price = price;
             _description = description ?? throw new ArgumentNullException(nameof(description));
             _isListed = false;
-            _imagePath = GetDefaultImagePath(itemName);
-            Debug.WriteLine($"Created item {itemName} with default image path: {_imagePath}");
+            // Image path will be set after ItemId is set
+            Debug.WriteLine($"Created item {itemName}, waiting for ItemId to set image path");
         }
 
         private string GetDefaultImagePath(string itemName)
         {
-            // Extract the weapon type from the item name (before the | character)
-            string weaponType = itemName.Contains("|") ? itemName.Split('|')[0].Trim().ToLower() : itemName.ToLower();
+            // Get the game folder name based on the game title
+            string gameFolder = _game.Title.ToLower() switch
+            {
+                "counter-strike 2" => "cs2",
+                "dota 2" => "dota2",
+                "team fortress 2" => "tf2",
+                _ => _game.Title.ToLower().Replace(" ", "").Replace(":", "")
+            };
             
-            // Return a path to a default image based on the weapon type
-            var path = $"ms-appx:///Assets/img/games/cs2/{weaponType}.png";
-            Debug.WriteLine($"Generated default path for {itemName}: {path}");
+            // Return a path to the image based on the ItemId
+            var path = $"ms-appx:///Assets/img/games/{gameFolder}/{_itemId}.png";
+            Debug.WriteLine($"Generated image path for item {_itemId} ({itemName}) from {_game.Title}: {path}");
             return path;
         }
 
@@ -102,6 +108,9 @@ namespace Steampunks.Domain.Entities
         public void SetItemId(int id)
         {
             _itemId = id;
+            // Set the image path now that we have the ItemId
+            _imagePath = GetDefaultImagePath(_itemName);
+            Debug.WriteLine($"Set ItemId {id} and image path: {_imagePath}");
         }
 
         public void SetIsListed(bool isListed)

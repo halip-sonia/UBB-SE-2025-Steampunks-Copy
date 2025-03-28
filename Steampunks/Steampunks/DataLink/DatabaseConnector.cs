@@ -579,6 +579,11 @@ namespace Steampunks.DataLink
                             item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
                             item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
 
+                            // Set image path based on game and item ID
+                            string imagePath = GetItemImagePath(item);
+                            item.SetImagePath(imagePath);
+                            System.Diagnostics.Debug.WriteLine($"Added listing item {item.ItemId} with image path: {imagePath}");
+
                             items.Add(item);
                         }
                     }
@@ -1045,15 +1050,18 @@ namespace Steampunks.DataLink
         {
             try
             {
-                string gameTitle = item.Game.Title.ToLower();
-                string itemName = item.ItemName.ToLower();
+                // Get the game folder name based on the game title
+                string gameFolder = item.Game.Title.ToLower() switch
+                {
+                    "counter-strike 2" => "cs2",
+                    "dota 2" => "dota2",
+                    "team fortress 2" => "tf2",
+                    _ => item.Game.Title.ToLower().Replace(" ", "").Replace(":", "")
+                };
 
-                // Extract the weapon type from the item name (before the | character)
-                string weaponType = itemName.Contains("|") ? itemName.Split('|')[0].Trim().ToLower() : itemName.ToLower();
-                
-                // Return a path to a default image based on the weapon type
-                var path = $"ms-appx:///Assets/img/games/cs2/{weaponType}.png";
-                System.Diagnostics.Debug.WriteLine($"Generated image path for {itemName}: {path}");
+                // Return a path to the image based on the ItemId
+                var path = $"ms-appx:///Assets/img/games/{gameFolder}/{item.ItemId}.png";
+                System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
             }
             catch (Exception ex)

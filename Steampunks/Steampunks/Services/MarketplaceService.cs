@@ -7,6 +7,7 @@ using Steampunks.Repository.Marketplace;
 using Steampunks.ViewModels;
 using Microsoft.Data.SqlClient;
 using Steampunks.DataLink;
+using System.Diagnostics;
 
 namespace Steampunks.Services
 {
@@ -40,7 +41,15 @@ namespace Steampunks.Services
 
         public List<Item> getAllListings()
         {
-            return _marketplaceRepo.GetAllListings();
+            var items = _marketplaceRepo.GetAllListings();
+            foreach (var item in items)
+            {
+                // The GetDefaultImagePath method will be called automatically in the Item constructor
+                // but we can force a refresh here if needed
+                var imagePath = item.ImagePath;
+                Debug.WriteLine($"Loaded item {item.ItemName} with image path: {imagePath}");
+            }
+            return items;
         }
 
         public List<Item> getListingsByGame(Game game)
