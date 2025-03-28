@@ -5,12 +5,14 @@ using System.Runtime.CompilerServices;
 using Steampunks.Domain.Entities;
 using System.Linq;
 using System.Collections.Generic;
+using Steampunks.Services;
 using Steampunks.DataLink;
 
 namespace Steampunks.ViewModels
 {
     public class InventoryViewModel : INotifyPropertyChanged
     {
+        private readonly InventoryService _inventoryService;
         private readonly DatabaseConnector _dbConnector;
         private ObservableCollection<Item> _inventoryItems;
         private ObservableCollection<Game> _availableGames;
@@ -24,6 +26,37 @@ namespace Steampunks.ViewModels
         private Item _selectedItem;
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        public InventoryViewModel(InventoryService inventoryService)
+        {
+            _inventoryService = inventoryService ?? throw new ArgumentNullException(nameof(inventoryService));
+            _inventoryItems = new ObservableCollection<Item>();
+            _availableGames = new ObservableCollection<Game>();
+            _allItems = new List<Item>();
+            // Create the "All Games" option
+            _allGamesOption = new Game("All Games", 0.0f, "", "Show items from all games");
+            InitializeData();
+        }
+
+        private void InitializeData()
+        {
+            // Get all items from inventory
+            _allItems = _inventoryService.GetAllItemsFromInventory();
+            
+            // Get unique games from items
+            var games = _allItems.Select(item => item.Game).Distinct().ToList();
+            
+            // Initialize available games with "All Games" option first
+            _availableGames.Clear();
+            _availableGames.Add(_allGamesOption); // Add "All Games" as the first option
+            foreach (var game in games)
+            {
+                _availableGames.Add(game);
+            }
+
+            // Set initial selection to "All Games"
+            SelectedGame = _allGamesOption;
+        }
 
         public InventoryViewModel(DatabaseConnector dbConnector)
         {

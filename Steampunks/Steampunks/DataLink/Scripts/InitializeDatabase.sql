@@ -1,8 +1,13 @@
--- Create Database
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'SteampunksDB')
-BEGIN
-    CREATE DATABASE SteampunksDB;
-END
+USE [master]
+GO
+/****** Object:  Database [SteampunksDB]    Script Date: 3/27/2025 4:14:06 PM ******/
+CREATE DATABASE [SteampunksDB]
+ CONTAINMENT = NONE
+ ON  PRIMARY 
+( NAME = N'SteampunksDB', FILENAME = N'C:\Users\Public\SteampunksDB.mdf' , SIZE = 8192KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
+ LOG ON 
+( NAME = N'SteampunksDB_log', FILENAME = N'C:\Users\Public\SteampunksDB_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
+ WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
 GO
 
 USE SteampunksDB;

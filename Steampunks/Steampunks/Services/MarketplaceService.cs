@@ -5,63 +5,42 @@ using Microsoft.Extensions.DependencyInjection;
 using Steampunks.Domain.Entities;
 using Steampunks.Repository.Marketplace;
 using Steampunks.ViewModels;
+using Microsoft.Data.SqlClient;
+using Steampunks.DataLink;
 
 namespace Steampunks.Services
 {
     public class MarketplaceService
     {
         private readonly MarketplaceRepository _marketplaceRepo;
-        private readonly User _user;
+        private readonly DatabaseConnector _dbConnector;
+        private User _currentUser;
 
-        public MarketplaceService(MarketplaceRepository marketplaceRepo, User user)
+        public MarketplaceService(MarketplaceRepository marketplaceRepo)
         {
             _marketplaceRepo = marketplaceRepo ?? throw new ArgumentNullException(nameof(marketplaceRepo));
-            _user = user ?? throw new ArgumentNullException(nameof(user));
+            _dbConnector = new DatabaseConnector();
+            _currentUser = _dbConnector.GetCurrentUser();
+        }
+
+        public User GetCurrentUser()
+        {
+            return _currentUser;
+        }
+
+        public void SetCurrentUser(User user)
+        {
+            _currentUser = user ?? throw new ArgumentNullException(nameof(user));
+        }
+
+        public List<User> GetAllUsers()
+        {
+            return _dbConnector.GetAllUsers();
         }
 
         public List<Item> getAllListings()
         {
-            // Sample data for testing
-            var cs2 = new Game("Counter-Strike 2", 0, "FPS", "The latest version of Counter-Strike");
-            cs2.SetGameId(1);
-
-            var items = new List<Item>
-            {
-                new Item("Dragon Lore", cs2, 999.99f, "A legendary AWP skin with a dragon design")
-                {
-                    ItemId = 1,
-                    IsListed = true
-                },
-                new Item("AK-47 | Asiimov", cs2, 49.99f, "A futuristic AK-47 skin with a unique design")
-                {
-                    ItemId = 2,
-                    IsListed = true
-                },
-                new Item("M4A4 | Howl", cs2, 1299.99f, "A rare and valuable M4A4 skin")
-                {
-                    ItemId = 3,
-                    IsListed = true
-                },
-                new Item("AWP | Neo-Noir", cs2, 79.99f, "A sleek and modern AWP skin")
-                {
-                    ItemId = 4,
-                    IsListed = true
-                },
-                new Item("USP-S | Neo-Noir", cs2, 29.99f, "A matching USP-S skin")
-                {
-                    ItemId = 5,
-                    IsListed = true
-                }
-            };
-
-            // Set custom image paths for each item
-            items[0].SetImagePath("ms-appx:///Assets/img/games/cs2/dragon-lore.png");
-            items[1].SetImagePath("ms-appx:///Assets/img/games/cs2/ak47-asiimov.png");
-            items[2].SetImagePath("ms-appx:///Assets/img/games/cs2/m4a4-howl.png");
-            items[3].SetImagePath("ms-appx:///Assets/img/games/cs2/awp-neo-noir.png");
-            items[4].SetImagePath("ms-appx:///Assets/img/games/cs2/usp-neo-noir.png");
-
-            return items;
+            return _marketplaceRepo.GetAllListings();
         }
 
         public List<Item> getListingsByGame(Game game)
@@ -69,7 +48,7 @@ namespace Steampunks.Services
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 
-            return getAllListings().Where(i => i.GetCorrespondingGame().GameId == game.GameId).ToList();
+            return _marketplaceRepo.GetListingsByGame(game);
         }
 
         public void addListing(Game game, Item item)
@@ -100,6 +79,74 @@ namespace Steampunks.Services
                 throw new ArgumentNullException(nameof(item));
 
             _marketplaceRepo.UpdateListing(game, item);
+        }
+
+        public bool BuyItem(Item item)
+        {
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            if (!item.IsListed)
+                throw new InvalidOperationException("Item is not listed for sale");
+
+            if (_currentUser.WalletBalance < item.Price)
+                throw new InvalidOperationException("Insufficient funds");
+
+            try
+            {
+                // Start transaction
+                _dbConnector.OpenConnection();
+                using (var transaction = _dbConnector.GetConnection().BeginTransaction())
+                {
+                    try
+                    {
+                        // Update user's wallet balance
+                        using (var command = new SqlCommand(@"
+                            UPDATE Users 
+                            SET WalletBalance = WalletBalance - @Price
+                            WHERE UserId = @UserId", _dbConnector.GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@Price", item.Price);
+                            command.Parameters.AddWithValue("@UserId", _currentUser.UserId);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // Add item to user's inventory
+                        using (var command = new SqlCommand(@"
+                            INSERT INTO UserInventory (UserId, GameId, ItemId)
+                            VALUES (@UserId, @GameId, @ItemId)", _dbConnector.GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@UserId", _currentUser.UserId);
+                            command.Parameters.AddWithValue("@GameId", item.Game.GameId);
+                            command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // Update item's listed status
+                        using (var command = new SqlCommand(@"
+                            UPDATE Items 
+                            SET IsListed = 0
+                            WHERE ItemId = @ItemId", _dbConnector.GetConnection(), transaction))
+                        {
+                            command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                            command.ExecuteNonQuery();
+                        }
+
+                        // Commit transaction
+                        transaction.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            finally
+            {
+                _dbConnector.CloseConnection();
+            }
         }
     }
 }
