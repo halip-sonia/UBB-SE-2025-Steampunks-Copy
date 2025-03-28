@@ -167,40 +167,41 @@ namespace Steampunks.ViewModels
         private void LoadItems()
         {
             var allItems = _marketplaceService.getAllListings();
+            _allCurrentItems = allItems;
             Items = new ObservableCollection<Item>(allItems);
         }
 
         private void InitializeCollections()
         {
             var allItems = Items.ToList();
-            AvailableGames = new ObservableCollection<string>(allItems.Select(i => i.GetCorrespondingGame().GetTitle()).Distinct());
-            AvailableTypes = new ObservableCollection<string>(allItems.Select(i => i.GetItemName().Split('|').First().Trim()).Distinct());
+            AvailableGames = new ObservableCollection<string>(allItems.Select(i => i.Game.Title).Distinct());
+            AvailableTypes = new ObservableCollection<string>(allItems.Select(i => i.ItemName.Split('|').First().Trim()).Distinct());
             AvailableRarities = new ObservableCollection<string>(new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary" });
         }
 
         private void FilterItems()
         {
-            var filteredItems = _marketplaceService.getAllListings().AsQueryable();
+            var filteredItems = _allCurrentItems.AsQueryable();
 
             if (!string.IsNullOrEmpty(SearchText))
             {
                 var searchTextLower = SearchText.ToLower();
                 filteredItems = filteredItems.Where(i => 
-                    i.GetItemName().ToLower().Contains(searchTextLower) ||
+                    i.ItemName.ToLower().Contains(searchTextLower) ||
                     i.Description.ToLower().Contains(searchTextLower));
             }
 
             if (!string.IsNullOrEmpty(SelectedGame))
             {
-                filteredItems = filteredItems.Where(i => i.GetCorrespondingGame().GetTitle() == SelectedGame);
+                filteredItems = filteredItems.Where(i => i.Game.Title == SelectedGame);
             }
 
             if (!string.IsNullOrEmpty(SelectedType))
             {
                 filteredItems = filteredItems.Where(i => 
-                    i.GetItemName().IndexOf('|') > 0 
-                        ? i.GetItemName().Substring(0, i.GetItemName().IndexOf('|')).Trim() == SelectedType
-                        : i.GetItemName().Trim() == SelectedType);
+                    i.ItemName.IndexOf('|') > 0 
+                        ? i.ItemName.Substring(0, i.ItemName.IndexOf('|')).Trim() == SelectedType
+                        : i.ItemName.Trim() == SelectedType);
             }
 
             Items = new ObservableCollection<Item>(filteredItems);

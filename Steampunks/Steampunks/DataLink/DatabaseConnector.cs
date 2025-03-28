@@ -508,9 +508,13 @@ namespace Steampunks.DataLink
                             gameId = Convert.ToInt32(command.ExecuteScalar());
                         }
 
+                        // Create the Game object
+                        var game = new Game(gameTitle, gamePrice, genre, description);
+                        game.SetGameId(gameId);
+
                         // Add each item
                         const string itemQuery = @"
-                            INSERT INTO Items (ItemName, CorrespondingGameId, Price, Description, IsListed)
+                            INSERT INTO Items (ItemName, GameId, Price, Description, IsListed)
                             VALUES (@ItemName, @GameId, @Price, @Description, 0);";
 
                         foreach (var item in items)
@@ -543,7 +547,53 @@ namespace Steampunks.DataLink
 
         public List<Item> GetAllListings()
         {
-            var listings = new List<Item>();
+            var items = new List<Item>();
+            using (var command = new SqlCommand(@"
+                SELECT i.ItemId, i.ItemName, i.Description, i.Price, i.IsListed,
+                       g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
+                FROM Items i
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                WHERE i.IsListed = 1", GetConnection()))
+            {
+                try
+                {
+                    OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                            items.Add(item);
+                        }
+                    }
+                }
+                finally
+                {
+                    CloseConnection();
+                }
+            }
+            return items;
+        }
+
+        public List<Item> GetListingsByGame(Game game)
+        {
+            var items = new List<Item>();
             const string query = @"
                 SELECT 
                     i.ItemId,
@@ -558,63 +608,9 @@ namespace Steampunks.DataLink
                     g.Price as GamePrice,
                     g.Status as GameStatus
                 FROM Items i
-                JOIN Games g ON i.CorrespondingGameId = g.GameId
-                WHERE i.IsListed = 1
-                ORDER BY i.Price DESC";
-
-            try
-            {
-                using (var command = new SqlCommand(query, GetConnection()))
-                {
-                    OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("GameTitle")),
-                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription"))
-                            );
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
-
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-
-                            listings.Add(item);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                CloseConnection();
-            }
-
-            return listings;
-        }
-
-        public List<Item> GetListingsByGame(Game game)
-        {
-            var listings = new List<Item>();
-            const string query = @"
-                SELECT 
-                    i.ItemId,
-                    i.ItemName,
-                    i.Price,
-                    i.Description,
-                    i.IsListed
-                FROM Items i
-                WHERE i.CorrespondingGameId = @GameId AND i.IsListed = 1
-                ORDER BY i.Price DESC";
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId
+                JOIN Games g ON ui.GameId = g.GameId
+                WHERE g.GameId = @GameId AND i.IsListed = 1";
 
             try
             {
@@ -626,16 +622,24 @@ namespace Steampunks.DataLink
                     {
                         while (reader.Read())
                         {
+                            var gameObj = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            gameObj.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            gameObj.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+
                             var item = new Item(
                                 reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
+                                gameObj,
                                 (float)reader.GetDouble(reader.GetOrdinal("Price")),
                                 reader.GetString(reader.GetOrdinal("Description"))
                             );
                             item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
                             item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-
-                            listings.Add(item);
+                            items.Add(item);
                         }
                     }
                 }
@@ -645,78 +649,71 @@ namespace Steampunks.DataLink
                 CloseConnection();
             }
 
-            return listings;
+            return items;
         }
 
         public void AddListing(Item item)
         {
-            const string query = @"
+            using (var command = new SqlCommand(@"
                 UPDATE Items 
-                SET IsListed = 1
-                WHERE ItemId = @ItemId";
-
-            try
+                SET IsListed = 1, Price = @Price
+                WHERE ItemId = @ItemId", GetConnection()))
             {
-                using (var command = new SqlCommand(query, GetConnection()))
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                command.Parameters.AddWithValue("@Price", item.Price);
+
+                try
                 {
-                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
                     OpenConnection();
                     command.ExecuteNonQuery();
                 }
-            }
-            finally
-            {
-                CloseConnection();
+                finally
+                {
+                    CloseConnection();
+                }
             }
         }
 
         public void RemoveListing(Item item)
         {
-            const string query = @"
+            using (var command = new SqlCommand(@"
                 UPDATE Items 
                 SET IsListed = 0
-                WHERE ItemId = @ItemId";
-
-            try
+                WHERE ItemId = @ItemId", GetConnection()))
             {
-                using (var command = new SqlCommand(query, GetConnection()))
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+
+                try
                 {
-                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
                     OpenConnection();
                     command.ExecuteNonQuery();
                 }
-            }
-            finally
-            {
-                CloseConnection();
+                finally
+                {
+                    CloseConnection();
+                }
             }
         }
 
         public void UpdateListing(Item item)
         {
-            const string query = @"
+            using (var command = new SqlCommand(@"
                 UPDATE Items 
-                SET ItemName = @ItemName,
-                    Price = @Price,
-                    Description = @Description
-                WHERE ItemId = @ItemId";
-
-            try
+                SET Price = @Price
+                WHERE ItemId = @ItemId", GetConnection()))
             {
-                using (var command = new SqlCommand(query, GetConnection()))
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                command.Parameters.AddWithValue("@Price", item.Price);
+
+                try
                 {
-                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
-                    command.Parameters.AddWithValue("@ItemName", item.ItemName);
-                    command.Parameters.AddWithValue("@Price", item.Price);
-                    command.Parameters.AddWithValue("@Description", item.Description);
-                    
                     OpenConnection();
                     command.ExecuteNonQuery();
                 }
-            }
-            finally
-            {
-                CloseConnection();
+                finally
+                {
+                    CloseConnection();
+                }
             }
         }
 
@@ -977,9 +974,9 @@ namespace Steampunks.DataLink
                     g.Description as GameDescription,
                     g.Price as GamePrice,
                     g.Status as GameStatus
-                FROM UserInventory ui
-                JOIN Items i ON ui.ItemId = i.ItemId
-                JOIN Games g ON ui.GameId = g.GameId
+                FROM Items i
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId AND g.GameId = ui.GameId
                 WHERE ui.UserId = @UserId
                 ORDER BY g.Title, i.Price";
 

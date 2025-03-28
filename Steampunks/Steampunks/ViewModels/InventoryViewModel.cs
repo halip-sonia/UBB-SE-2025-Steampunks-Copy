@@ -32,7 +32,7 @@ namespace Steampunks.ViewModels
             _inventoryService = inventoryService ?? throw new ArgumentNullException(nameof(inventoryService));
             _inventoryItems = new ObservableCollection<Item>();
             _availableGames = new ObservableCollection<Game>();
-            _allItems = new List<Item>();
+            _allCurrentItems = new List<Item>();
             // Create the "All Games" option
             _allGamesOption = new Game("All Games", 0.0f, "", "Show items from all games");
             InitializeData();
@@ -41,10 +41,10 @@ namespace Steampunks.ViewModels
         private void InitializeData()
         {
             // Get all items from inventory
-            _allItems = _inventoryService.GetAllItemsFromInventory();
+            _allCurrentItems = _inventoryService.GetAllItemsFromInventory();
             
             // Get unique games from items
-            var games = _allItems.Select(item => item.Game).Distinct().ToList();
+            var games = _allCurrentItems.Select(item => item.Game).Distinct().ToList();
             
             // Initialize available games with "All Games" option first
             _availableGames.Clear();
@@ -332,6 +332,30 @@ namespace Steampunks.ViewModels
                 if (obj == null)
                     return 0;
                 return obj.GameId.GetHashCode();
+            }
+        }
+
+        private void LoadAvailableGames()
+        {
+            try
+            {
+                _availableGames.Clear();
+                _availableGames.Add(_allGamesOption);
+
+                var games = _allCurrentItems
+                    .Select(item => item.Game)
+                    .Where(game => game != null)
+                    .Distinct(new GameComparer());
+
+                foreach (var game in games)
+                {
+                    _availableGames.Add(game);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading available games: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
     }
