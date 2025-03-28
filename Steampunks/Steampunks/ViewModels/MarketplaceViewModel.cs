@@ -116,7 +116,7 @@ namespace Steampunks.ViewModels
             }
         }
 
-        public bool CanBuyItem => SelectedItem != null && SelectedItem.IsListed && CurrentUser != null && CurrentUser.WalletBalance >= SelectedItem.Price;
+        public bool CanBuyItem => SelectedItem != null && SelectedItem.IsListed && CurrentUser != null;
 
         public async Task<bool> BuyItemAsync()
         {

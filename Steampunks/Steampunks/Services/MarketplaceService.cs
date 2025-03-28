@@ -89,9 +89,6 @@ namespace Steampunks.Services
             if (!item.IsListed)
                 throw new InvalidOperationException("Item is not listed for sale");
 
-            if (_currentUser.WalletBalance < item.Price)
-                throw new InvalidOperationException("Insufficient funds");
-
             try
             {
                 // Start transaction
@@ -100,17 +97,6 @@ namespace Steampunks.Services
                 {
                     try
                     {
-                        // Update user's wallet balance
-                        using (var command = new SqlCommand(@"
-                            UPDATE Users 
-                            SET WalletBalance = WalletBalance - @Price
-                            WHERE UserId = @UserId", _dbConnector.GetConnection(), transaction))
-                        {
-                            command.Parameters.AddWithValue("@Price", item.Price);
-                            command.Parameters.AddWithValue("@UserId", _currentUser.UserId);
-                            command.ExecuteNonQuery();
-                        }
-
                         // Add item to user's inventory
                         using (var command = new SqlCommand(@"
                             INSERT INTO UserInventory (UserId, GameId, ItemId)

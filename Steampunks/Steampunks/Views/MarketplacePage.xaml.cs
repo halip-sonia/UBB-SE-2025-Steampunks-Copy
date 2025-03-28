@@ -24,6 +24,10 @@ namespace Steampunks.Views
             {
                 var viewModel = (MarketplaceViewModel)DataContext;
                 viewModel.SelectedItem = selectedItem;
+
+                // Set XamlRoot for the item details dialog
+                ItemDetailsDialog.XamlRoot = this.XamlRoot;
+
                 ItemDetailsDialog.ShowAsync().Completed = async (asyncInfo, status) =>
                 {
                     var result = (ContentDialogResult)asyncInfo.GetResults();
@@ -40,9 +44,10 @@ namespace Steampunks.Views
                                 {
                                     Title = "Success",
                                     Content = "Item purchased successfully!",
-                                    CloseButtonText = "OK"
+                                    CloseButtonText = "OK",
+                                    XamlRoot = this.XamlRoot // Set XamlRoot for success dialog
                                 };
-                                successDialog.ShowAsync();
+                                await successDialog.ShowAsync();
                             }
                         }
                         catch (Exception ex)
@@ -52,9 +57,10 @@ namespace Steampunks.Views
                             {
                                 Title = "Error",
                                 Content = ex.Message,
-                                CloseButtonText = "OK"
+                                CloseButtonText = "OK",
+                                XamlRoot = this.XamlRoot // Set XamlRoot for error dialog
                             };
-                            errorDialog.ShowAsync();
+                            await errorDialog.ShowAsync();
                         }
                     }
                 };
