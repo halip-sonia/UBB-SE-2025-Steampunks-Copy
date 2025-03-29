@@ -177,6 +177,7 @@ namespace Steampunks.ViewModels
                     OnPropertyChanged(nameof(AvailableUsers));
                     LoadUserInventory();
                     LoadActiveTrades();
+                    LoadTradeHistory();
                 }
             }
         }
@@ -235,9 +236,12 @@ namespace Steampunks.ViewModels
             set
             {
                 _selectedTrade = value;
-                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedTrade));
+                OnPropertyChanged(nameof(CanAcceptOrDeclineTrade));
             }
         }
+
+        public bool CanAcceptOrDeclineTrade => SelectedTrade != null;
 
         public bool CanSendTradeOffer
         {
@@ -429,8 +433,14 @@ namespace Steampunks.ViewModels
                 TradeHistory.Clear();
                 foreach (var trade in trades)
                 {
-                    TradeHistory.Add(trade);
+                    // Only add trades where the current user is involved
+                    if (trade.SourceUser.UserId == CurrentUser.UserId || 
+                        trade.DestinationUser.UserId == CurrentUser.UserId)
+                    {
+                        TradeHistory.Add(trade);
+                    }
                 }
+                OnPropertyChanged(nameof(TradeHistory));
             }
             catch (Exception ex)
             {
@@ -438,35 +448,25 @@ namespace Steampunks.ViewModels
             }
         }
 
-        public void AcceptTrade(ItemTrade trade)
+        public async void AcceptTrade(ItemTrade trade)
         {
             try
             {
-                if (trade.SourceUser.UserId == CurrentUser.UserId)
-                {
-                    //trade.AcceptedBySourceUser = true;
-                    trade.AcceptBySourceUser();
-                }
-                else if (trade.DestinationUser.UserId == CurrentUser.UserId)
-                {
-                    trade.AcceptByDestinationUser();
-                }
+                bool isSourceUser = trade.SourceUser.UserId == CurrentUser.UserId;
+                await _tradeService.AcceptTradeAsync(trade, isSourceUser);
 
-                // If both users have accepted, mark the trade as completed
-                if (trade.AcceptedBySourceUser && trade.AcceptedByDestinationUser)
-                {
-  
-                    trade.Complete();
+                // Clear the selected trade
+                SelectedTrade = null;
 
-                }
-
-                _dbConnector.UpdateItemTrade(trade);
-
-                // Refresh the trades lists and user inventories
+                // Refresh all relevant data
                 LoadActiveTrades();
                 LoadTradeHistory();
                 LoadUserInventory();
                 LoadDestinationUserInventory();
+
+                // Notify UI of changes
+                OnPropertyChanged(nameof(ActiveTrades));
+                OnPropertyChanged(nameof(TradeHistory));
             }
             catch (Exception ex)
             {
@@ -487,7 +487,18 @@ namespace Steampunks.ViewModels
             {
                 trade.Decline();
                 _dbConnector.UpdateItemTrade(trade);
-                await LoadActiveTradesAsync();
+
+                // Clear the selected trade
+                SelectedTrade = null;
+
+                // Refresh all relevant data
+                LoadActiveTrades();
+                LoadTradeHistory();
+
+                // Notify UI of changes
+                OnPropertyChanged(nameof(ActiveTrades));
+                OnPropertyChanged(nameof(TradeHistory));
+
                 return true;
             }
             catch (Exception ex)

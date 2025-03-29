@@ -17,7 +17,11 @@ namespace Steampunks.Views
     public sealed partial class TradingPage : Page
     {
         private readonly DatabaseConnector _dbConnector;
-        private ObservableCollection<TradeViewModel> ActiveTrades { get; set; }
+        private readonly TradeService _tradeService;
+        private readonly UserService _userService;
+        private readonly GameService _gameService;
+        private TradeViewModel ViewModel { get; set; }
+        private ObservableCollection<ItemTrade> ActiveTrades { get; set; }
         private ObservableCollection<TradeHistoryViewModel> TradeHistory { get; set; }
         private User _currentUser;
         private User _recipientUser;
@@ -30,24 +34,27 @@ namespace Steampunks.Views
         {
             InitializeComponent();
             _dbConnector = new DatabaseConnector();
-            ActiveTrades = new ObservableCollection<TradeViewModel>();
+            _tradeService = new TradeService(_dbConnector);
+            _userService = new UserService(_dbConnector);
+            _gameService = new GameService(_dbConnector);
+            ViewModel = new TradeViewModel(_tradeService, _userService, _gameService, _dbConnector);
+            ActiveTrades = new ObservableCollection<ItemTrade>();
             TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
             _sourceItems = new ObservableCollection<Item>();
             _destinationItems = new ObservableCollection<Item>();
             _selectedSourceItems = new ObservableCollection<Item>();
             _selectedDestinationItems = new ObservableCollection<Item>();
-            ActiveTradesListView.ItemsSource = ActiveTrades;
-            TradeHistoryListView.ItemsSource = TradeHistory;
-            LoadUsers();
-            LoadGames();
-            LoadActiveTrades();
-            LoadTradeHistory();
-
+            
             // Set up ListViews
             SourceItemsListView.ItemsSource = _sourceItems;
             DestinationItemsListView.ItemsSource = _destinationItems;
             SelectedSourceItemsListView.ItemsSource = _selectedSourceItems;
             SelectedDestinationItemsListView.ItemsSource = _selectedDestinationItems;
+            
+            LoadUsers();
+            LoadGames();
+            LoadActiveTrades();
+            LoadTradeHistory();
         }
 
         private void LoadUsers()
@@ -188,17 +195,7 @@ namespace Steampunks.Views
 
                 foreach (var trade in trades)
                 {
-                    var isSourceUser = trade.SourceUser.UserId == _currentUser.UserId;
-                    var partner = isSourceUser ? trade.DestinationUser : trade.SourceUser;
-                    
-                    ActiveTrades.Add(new TradeViewModel
-                    {
-                        TradeId = trade.TradeId,
-                        PartnerName = partner.Username,
-                        TradeItems = trade.SourceUserItems.Concat(trade.DestinationUserItems).ToList(),
-                        TradeDescription = trade.TradeDescription,
-                        IsSourceUser = isSourceUser
-                    });
+                    ActiveTrades.Add(trade);
                 }
             }
             catch (Exception ex)
@@ -380,77 +377,48 @@ namespace Steampunks.Views
             }
         }
 
-        private async void AcceptTrade_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private void ActiveTradesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var button = (Button)sender;
-            var trade = (TradeViewModel)button.DataContext;
-
-            ContentDialog dialog = new ContentDialog
+            if (sender is ListView listView && listView.SelectedItem is ItemTrade selectedTrade)
             {
-                Title = "Confirm Trade Acceptance",
-                Content = "Are you sure you want to accept this trade?",
-                PrimaryButtonText = "Accept",
-                CloseButtonText = "Cancel",
-                XamlRoot = this.XamlRoot
-            };
-
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                try
-                {
-                    _dbConnector.AcceptTrade(trade.TradeId);
-                    LoadActiveTrades();
-                    LoadTradeHistory();
-                    SuccessMessage.Text = "Trade accepted successfully!";
-                }
-                catch (Exception ex)
-                {
-                    ErrorMessage.Text = "Error accepting trade. Please try again later.";
-                    System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
-                }
+                ViewModel.SelectedTrade = selectedTrade;
             }
         }
 
-        private async void DeclineTrade_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void AcceptTrade_Click(object sender, RoutedEventArgs e)
         {
-            var button = (Button)sender;
-            var trade = (TradeViewModel)button.DataContext;
+            if (ViewModel.SelectedTrade == null) return;
 
-            ContentDialog dialog = new ContentDialog
+            try
             {
-                Title = "Confirm Trade Decline",
-                Content = "Are you sure you want to decline this trade?",
-                PrimaryButtonText = "Decline",
-                CloseButtonText = "Cancel",
-                XamlRoot = this.XamlRoot
-            };
-
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
+                ViewModel.AcceptTrade(ViewModel.SelectedTrade);
+                ViewModel.SelectedTrade = null;
+                LoadActiveTrades();
+                LoadTradeHistory();
+            }
+            catch (Exception ex)
             {
-                try
-                {
-                    _dbConnector.DeclineTrade(trade.TradeId);
-                    LoadActiveTrades();
-                    LoadTradeHistory();
-                    SuccessMessage.Text = "Trade declined successfully!";
-                }
-                catch (Exception ex)
-                {
-                    ErrorMessage.Text = "Error declining trade. Please try again later.";
-                    System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
-                }
+                ErrorMessage.Text = $"Error accepting trade: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
             }
         }
 
-        private class TradeViewModel
+        private async void DeclineTrade_Click(object sender, RoutedEventArgs e)
         {
-            public int TradeId { get; set; }
-            public string PartnerName { get; set; }
-            public List<Item> TradeItems { get; set; }
-            public string TradeDescription { get; set; }
-            public bool IsSourceUser { get; set; }
+            if (ViewModel.SelectedTrade == null) return;
+
+            try
+            {
+                await ViewModel.DeclineTrade(ViewModel.SelectedTrade);
+                ViewModel.SelectedTrade = null;
+                LoadActiveTrades();
+                LoadTradeHistory();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.Text = $"Error declining trade: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
+            }
         }
 
         private class TradeHistoryViewModel

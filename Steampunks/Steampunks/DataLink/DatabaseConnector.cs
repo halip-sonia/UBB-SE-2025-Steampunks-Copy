@@ -1238,7 +1238,7 @@ namespace Steampunks.DataLink
             const string insertTrade = @"
                 INSERT INTO ItemTrades (SourceUserId, DestinationUserId, GameOfTradeId, TradeDate, TradeDescription, TradeStatus, AcceptedBySourceUser, AcceptedByDestinationUser)
                 OUTPUT INSERTED.TradeId
-                VALUES (@SourceUserId, @DestinationUserId, @GameId, @TradeDate, @TradeDescription, @TradeStatus, @AcceptedBySourceUser, @AcceptedByDestinationUser)";
+                VALUES (@SourceUserId, @DestinationUserId, @GameId, @TradeDate, @TradeDescription, @TradeStatus, 1, 0)";
 
             const string insertTradeDetails = @"
                 INSERT INTO ItemTradeDetails (TradeId, ItemId, IsSourceUserItem)
@@ -1251,7 +1251,7 @@ namespace Steampunks.DataLink
                 {
                     try
                     {
-                        // Insert trade
+                        // Insert trade (note that AcceptedBySourceUser is set to 1)
                         int tradeId;
                         using (var command = new SqlCommand(insertTrade, GetConnection(), transaction))
                         {
@@ -1260,9 +1260,8 @@ namespace Steampunks.DataLink
                             command.Parameters.AddWithValue("@GameId", trade.GameOfTrade.GameId);
                             command.Parameters.AddWithValue("@TradeDate", trade.TradeDate);
                             command.Parameters.AddWithValue("@TradeDescription", trade.TradeDescription);
-                            command.Parameters.AddWithValue("@TradeStatus", trade.TradeStatus);
-                            command.Parameters.AddWithValue("@AcceptedBySourceUser", trade.AcceptedBySourceUser);
-                            command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
+                            command.Parameters.AddWithValue("@TradeStatus", "Pending");
+
                             tradeId = (int)command.ExecuteScalar();
                         }
 
@@ -1715,7 +1714,6 @@ namespace Steampunks.DataLink
             const string updateTradeQuery = @"
                 UPDATE ItemTrades 
                 SET TradeStatus = @TradeStatus,
-                    AcceptedBySourceUser = @AcceptedBySourceUser,
                     AcceptedByDestinationUser = @AcceptedByDestinationUser
                 WHERE TradeId = @TradeId";
 
@@ -1724,29 +1722,29 @@ namespace Steampunks.DataLink
                 FROM ItemTradeDetails
                 WHERE TradeId = @TradeId";
 
-            try
+            using (var connection = new SqlConnection(connectionString))
             {
-                OpenConnection();
-                using (var transaction = GetConnection().BeginTransaction())
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
                 {
                     try
                     {
-                        // First update the trade status
-                        using (var command = new SqlCommand(updateTradeQuery, GetConnection(), transaction))
+                        // Update the trade status and destination user acceptance
+                        using (var command = new SqlCommand(updateTradeQuery, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@TradeId", trade.TradeId);
-                            command.Parameters.AddWithValue("@TradeStatus", trade.TradeStatus);
-                            command.Parameters.AddWithValue("@AcceptedBySourceUser", trade.AcceptedBySourceUser);
+                            // If destination user accepts, mark trade as completed since source user already accepted
+                            command.Parameters.AddWithValue("@TradeStatus", trade.AcceptedByDestinationUser ? "Completed" : trade.TradeStatus);
                             command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
                             command.ExecuteNonQuery();
                         }
 
-                        // If the trade is completed, transfer the items
-                        if (trade.TradeStatus == "Completed")
+                        // If the destination user accepted, transfer the items
+                        if (trade.AcceptedByDestinationUser)
                         {
                             // Get all items involved in the trade
                             var itemsToTransfer = new List<(int ItemId, bool IsSourceUserItem)>();
-                            using (var command = new SqlCommand(getTradeItemsQuery, GetConnection(), transaction))
+                            using (var command = new SqlCommand(getTradeItemsQuery, connection, transaction))
                             {
                                 command.Parameters.AddWithValue("@TradeId", trade.TradeId);
                                 using (var reader = command.ExecuteReader())
@@ -1772,7 +1770,7 @@ namespace Steampunks.DataLink
                                     SET UserId = @ToUserId
                                     WHERE ItemId = @ItemId AND UserId = @FromUserId";
 
-                                using (var command = new SqlCommand(transferQuery, GetConnection(), transaction))
+                                using (var command = new SqlCommand(transferQuery, connection, transaction))
                                 {
                                     command.Parameters.AddWithValue("@ItemId", itemId);
                                     command.Parameters.AddWithValue("@FromUserId", fromUserId);
@@ -1782,22 +1780,28 @@ namespace Steampunks.DataLink
                                     {
                                         throw new Exception($"Failed to transfer item {itemId} from user {fromUserId} to user {toUserId}");
                                     }
+                                    System.Diagnostics.Debug.WriteLine($"Successfully transferred item {itemId} from user {fromUserId} to user {toUserId}");
                                 }
                             }
                         }
 
                         transaction.Commit();
+                        System.Diagnostics.Debug.WriteLine($"Trade {trade.TradeId} updated successfully. Status: {trade.TradeStatus}");
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        transaction.Rollback();
+                        try
+                        {
+                            transaction.Rollback();
+                        }
+                        catch (Exception rollbackEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error rolling back transaction: {rollbackEx.Message}");
+                        }
+                        System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
                         throw;
                     }
                 }
-            }
-            finally
-            {
-                CloseConnection();
             }
         }
     }

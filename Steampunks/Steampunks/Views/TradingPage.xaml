@@ -6,6 +6,7 @@
     xmlns:local="using:Steampunks.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:Steampunks.Domain.Entities"
     mc:Ignorable="d">
 
     <Grid Padding="20">
@@ -265,72 +266,101 @@
                 </TabViewItem>
 
                 <TabViewItem Header="Active Trades">
-                    <Grid Padding="20">
+                    <Grid RowSpacing="10" Padding="20">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Text="Active Trade Offers" 
-                                 Style="{StaticResource SubtitleTextBlockStyle}"
-                                 Margin="0,0,0,20"/>
+                        <!-- User Selection -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Current User:" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ActiveTradesUserComboBox" 
+                                    ItemsSource="{x:Bind ViewModel.Users}"
+                                    SelectedItem="{x:Bind ViewModel.CurrentUser, Mode=TwoWay}"
+                                    PlaceholderText="Select your user"
+                                    Width="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:User">
+                                        <TextBlock Text="{x:Bind Username}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
 
-                        <ListView x:Name="ActiveTradesListView" 
-                                Grid.Row="1"
-                                SelectionMode="None">
+                        <!-- Active Trades List -->
+                        <ListView Grid.Row="1" 
+                                 ItemsSource="{x:Bind ViewModel.ActiveTrades}"
+                                 SelectionMode="Single"
+                                 SelectionChanged="ActiveTradesListView_SelectionChanged">
                             <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Padding="12" 
-                                          ColumnSpacing="20" 
-                                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                          BorderThickness="1"
-                                          CornerRadius="8"
-                                          Margin="0,0,0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
+                                <DataTemplate x:DataType="models:ItemTrade">
+                                    <Grid Padding="10">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
 
-                                        <StackPanel Grid.Column="0" Width="200">
-                                            <TextBlock Text="Trade Partner" 
-                                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                                     Opacity="0.6"/>
-                                            <TextBlock Text="{Binding PartnerName}" 
+                                        <!-- Trade Header -->
+                                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind TradeDescription}" 
                                                      Style="{StaticResource BodyTextBlockStyle}"/>
-                                        </StackPanel>
+                                            <TextBlock Grid.Column="1" 
+                                                     Text="{x:Bind TradeStatus}" 
+                                                     Style="{StaticResource BodyTextBlockStyle}"/>
+                                        </Grid>
 
-                                        <StackPanel Grid.Column="1" Spacing="4">
-                                            <TextBlock Text="Items" 
-                                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                                     Opacity="0.6"/>
-                                            <ItemsRepeater ItemsSource="{Binding TradeItems}">
+                                        <!-- Source User Items -->
+                                        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                                            <TextBlock Text="{x:Bind SourceUser.Username}" 
+                                                     Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                            <ItemsRepeater ItemsSource="{x:Bind SourceUserItems}">
                                                 <ItemsRepeater.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding ItemName}"
+                                                    <DataTemplate x:DataType="models:Item">
+                                                        <TextBlock Text="{x:Bind ItemName}" 
                                                                  Style="{StaticResource BodyTextBlockStyle}"/>
                                                     </DataTemplate>
                                                 </ItemsRepeater.ItemTemplate>
                                             </ItemsRepeater>
-                                            <TextBlock Text="{Binding TradeDescription}"
-                                                     Style="{StaticResource BodyTextBlockStyle}"
-                                                     Opacity="0.8"
-                                                     TextWrapping="Wrap"/>
                                         </StackPanel>
 
-                                        <StackPanel Grid.Column="2" 
-                                                  Orientation="Horizontal" 
-                                                  Spacing="8">
-                                            <Button Content="Accept"
-                                                    Style="{StaticResource AccentButtonStyle}"
-                                                    Click="AcceptTrade_Click"/>
-                                            <Button Content="Decline"
-                                                    Click="DeclineTrade_Click"/>
+                                        <!-- Destination User Items -->
+                                        <StackPanel Grid.Row="2">
+                                            <TextBlock Text="{x:Bind DestinationUser.Username}" 
+                                                     Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                            <ItemsRepeater ItemsSource="{x:Bind DestinationUserItems}">
+                                                <ItemsRepeater.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:Item">
+                                                        <TextBlock Text="{x:Bind ItemName}" 
+                                                                 Style="{StaticResource BodyTextBlockStyle}"/>
+                                                    </DataTemplate>
+                                                </ItemsRepeater.ItemTemplate>
+                                            </ItemsRepeater>
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
                         </ListView>
+
+                        <!-- Trade Controls -->
+                        <StackPanel Grid.Row="2" 
+                                  Orientation="Horizontal" 
+                                  Spacing="10" 
+                                  HorizontalAlignment="Right"
+                                  Margin="0,10,0,0">
+                            <Button Content="Accept Trade" 
+                                    Click="AcceptTrade_Click"
+                                    IsEnabled="{x:Bind ViewModel.CanAcceptOrDeclineTrade, Mode=OneWay}"/>
+                            <Button Content="Decline Trade" 
+                                    Click="DeclineTrade_Click"
+                                    IsEnabled="{x:Bind ViewModel.CanAcceptOrDeclineTrade, Mode=OneWay}"/>
+                        </StackPanel>
                     </Grid>
                 </TabViewItem>
 
@@ -338,18 +368,36 @@
                     <Grid Padding="20">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Text="Trade History" 
+                        <!-- User Selection -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Current User:" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="HistoryUserComboBox" 
+                                    ItemsSource="{x:Bind ViewModel.Users}"
+                                    SelectedItem="{x:Bind ViewModel.CurrentUser, Mode=TwoWay}"
+                                    PlaceholderText="Select your user"
+                                    Width="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:User">
+                                        <TextBlock Text="{x:Bind Username}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="1" 
+                                 Text="Trade History" 
                                  Style="{StaticResource SubtitleTextBlockStyle}"
                                  Margin="0,0,0,20"/>
 
-                        <ListView x:Name="TradeHistoryListView" 
-                                Grid.Row="1"
+                        <ListView Grid.Row="2"
+                                ItemsSource="{x:Bind ViewModel.TradeHistory}"
                                 SelectionMode="None">
                             <ListView.ItemTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="models:ItemTrade">
                                     <Grid Padding="12" 
                                           ColumnSpacing="20" 
                                           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -362,40 +410,45 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <StackPanel Grid.Column="0" Width="200">
-                                            <TextBlock Text="Trade Partner" 
-                                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                                     Opacity="0.6"/>
-                                            <TextBlock Text="{Binding PartnerName}" 
+                                        <!-- Trade Header -->
+                                        <Grid Grid.Column="0" Width="200">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="{x:Bind TradeDescription}" 
                                                      Style="{StaticResource BodyTextBlockStyle}"/>
-                                            <TextBlock Text="{Binding TradeDate}" 
-                                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                                     Opacity="0.6"/>
-                                        </StackPanel>
+                                            <TextBlock Grid.Row="1"
+                                                     Text="{x:Bind TradeStatus}" 
+                                                     Style="{StaticResource BodyTextBlockStyle}"/>
+                                        </Grid>
 
-                                        <StackPanel Grid.Column="1" Spacing="4">
-                                            <TextBlock Text="Items" 
-                                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                                     Opacity="0.6"/>
-                                            <ItemsRepeater ItemsSource="{Binding TradeItems}">
+                                        <!-- Source User Items -->
+                                        <StackPanel Grid.Column="1" Margin="0,0,0,10">
+                                            <TextBlock Text="{x:Bind SourceUser.Username}" 
+                                                     Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                            <ItemsRepeater ItemsSource="{x:Bind SourceUserItems}">
                                                 <ItemsRepeater.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding ItemName}"
+                                                    <DataTemplate x:DataType="models:Item">
+                                                        <TextBlock Text="{x:Bind ItemName}" 
                                                                  Style="{StaticResource BodyTextBlockStyle}"/>
                                                     </DataTemplate>
                                                 </ItemsRepeater.ItemTemplate>
                                             </ItemsRepeater>
-                                            <TextBlock Text="{Binding TradeDescription}"
-                                                     Style="{StaticResource BodyTextBlockStyle}"
-                                                     Opacity="0.8"
-                                                     TextWrapping="Wrap"/>
                                         </StackPanel>
 
-                                        <StackPanel Grid.Column="2" 
-                                                  VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding TradeStatus}"
-                                                     Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                     Foreground="{Binding StatusColor}"/>
+                                        <!-- Destination User Items -->
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{x:Bind DestinationUser.Username}" 
+                                                     Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                            <ItemsRepeater ItemsSource="{x:Bind DestinationUserItems}">
+                                                <ItemsRepeater.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:Item">
+                                                        <TextBlock Text="{x:Bind ItemName}" 
+                                                                 Style="{StaticResource BodyTextBlockStyle}"/>
+                                                    </DataTemplate>
+                                                </ItemsRepeater.ItemTemplate>
+                                            </ItemsRepeater>
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
