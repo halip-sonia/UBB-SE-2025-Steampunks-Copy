@@ -1363,6 +1363,16 @@ namespace Steampunks.DataLink
                                 reader.GetString(reader.GetOrdinal("TradeDescription"))
                             );
                             trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
+                            // Set the trade status from the database
+                            string tradeStatus = reader.GetString(reader.GetOrdinal("TradeStatus"));
+                            if (tradeStatus == "Completed")
+                            {
+                                trade.Complete();
+                            }
+                            else if (tradeStatus == "Declined")
+                            {
+                                trade.Decline();
+                            }
                             trades.Add(trade);
                         }
                     }
@@ -1475,6 +1485,16 @@ namespace Steampunks.DataLink
                                 reader.GetString(reader.GetOrdinal("TradeDescription"))
                             );
                             trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
+                            // Set the trade status from the database
+                            string tradeStatus = reader.GetString(reader.GetOrdinal("TradeStatus"));
+                            if (tradeStatus == "Completed")
+                            {
+                                trade.Complete();
+                            }
+                            else if (tradeStatus == "Declined")
+                            {
+                                trade.Decline();
+                            }
                             trades.Add(trade);
                         }
                     }
