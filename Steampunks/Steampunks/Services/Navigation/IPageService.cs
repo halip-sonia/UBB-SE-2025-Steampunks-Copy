@@ -4,6 +4,6 @@ namespace Steampunks.Services
 {
     public interface IPageService
     {
-        Type GetPageType(string key);
+        Type GetPageTypeForViewModel(string key);
     }
-} 
+}

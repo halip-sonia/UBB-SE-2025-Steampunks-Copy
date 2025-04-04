@@ -7,22 +7,37 @@ namespace Steampunks.Repository.GameRepo
 {
     public class GameRepository : IGameRepository
     {
-        private readonly DatabaseConnector _dbConnector;
+        private readonly DatabaseConnector _databaseConnector;
 
         public GameRepository()
         {
-            _dbConnector = new DatabaseConnector();
+            _databaseConnector = new DatabaseConnector();
         }
 
+        /// <summary>
+        /// Retrieves all game records from the database.
+        /// </summary>
+        /// <returns>
+        /// A list of Game entities representing all games in the database.
+        /// </returns>
         public List<Game> GetGames()
         {
-            return _dbConnector.GetGames();
+            return _databaseConnector.GetGames();
         }
 
+        /// <summary>
+        /// Retrieves a single game entity based on its unique identifier.
+        /// </summary>
+        /// <param name="gameId">The unique identifier of the game to retrieve.</param>
+        /// <returns>
+        /// A Game object if a game with the specified <paramref name="gameId"/> exists; otherwise, null.
+        /// </returns>
         public Game GetGameById(int gameId)
         {
-            return _dbConnector.GetGameById(gameId);
+            return _databaseConnector.GetGameById(gameId);
         }
+
+
     }
 
     public interface IGameRepository
@@ -30,4 +45,4 @@ namespace Steampunks.Repository.GameRepo
         List<Game> GetGames();
         Game GetGameById(int gameId);
     }
-} 
+}

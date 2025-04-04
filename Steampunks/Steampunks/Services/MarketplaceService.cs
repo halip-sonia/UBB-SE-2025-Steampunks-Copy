@@ -41,7 +41,7 @@ namespace Steampunks.Services
 
         public List<Item> getAllListings()
         {
-            var items = _marketplaceRepo.GetAllListings();
+            var items = _marketplaceRepo.GetAllListedItems();
             foreach (var item in items)
             {
                 // The GetDefaultImagePath method will be called automatically in the Item constructor
@@ -57,7 +57,7 @@ namespace Steampunks.Services
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
 
-            return _marketplaceRepo.GetListingsByGame(game);
+            return _marketplaceRepo.GetListedItemsByGame(game);
         }
 
         public void addListing(Game game, Item item)
@@ -67,7 +67,7 @@ namespace Steampunks.Services
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
-            _marketplaceRepo.AddListing(game, item);
+            _marketplaceRepo.MakeItemListable(game, item);
         }
 
         public void removeListing(Game game, Item item)
@@ -77,7 +77,7 @@ namespace Steampunks.Services
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
-            _marketplaceRepo.RemoveListing(game, item);
+            _marketplaceRepo.MakeItemNotListable(game, item);
         }
 
         public void updateListing(Game game, Item item)
@@ -87,7 +87,7 @@ namespace Steampunks.Services
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
-            _marketplaceRepo.UpdateListing(game, item);
+            _marketplaceRepo.UpdateItemPrice(game, item);
         }
 
         public bool BuyItem(Item item)
