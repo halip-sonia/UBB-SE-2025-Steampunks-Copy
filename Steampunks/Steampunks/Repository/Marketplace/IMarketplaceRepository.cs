@@ -19,7 +19,7 @@
         /// <returns>
         /// A list of Item objects that are currently listed for sale.
         /// </returns>
-        List<Item> GetAllListedItems();
+        Task<List<Item>> GetAllListedItemsAsync();
 
         /// <summary>
         /// Retrieves all currently listed items associated with a specific game.
@@ -31,7 +31,7 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown when the provided <paramref name="game"/> is null.
         /// </exception>
-        List<Item> GetListedItemsByGame(Game game);
+        Task<List<Item>> GetListedItemsByGameAsync(Game game);
 
         /// <summary>
         /// Marks an existing item as listed for the specified game.
@@ -41,7 +41,8 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-        void MakeItemListable(Game game, Item item);
+
+        Task MakeItemListableAsync(Game game, Item item);
 
         /// <summary>
         /// Marks an item as not listable in the specified game by updating its listing status.
@@ -51,7 +52,8 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-        void MakeItemNotListable(Game game, Item item);
+        Task MakeItemNotListableAsync(Game game, Item item);
+
 
         /// <summary>
         /// Updates the price of an item in the specified game.
@@ -61,6 +63,6 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-        void UpdateItemPrice(Game game, Item item);
+        Task UpdateItemPriceAsync(Game game, Item item);
     }
 }

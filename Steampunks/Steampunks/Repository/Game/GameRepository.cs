@@ -2,6 +2,7 @@ namespace Steampunks.Repository.GameRepo
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
 
@@ -31,9 +32,10 @@ namespace Steampunks.Repository.GameRepo
         /// <returns>
         /// A list of Game entities representing all games in the database.
         /// </returns>
-        public List<Game> GetGames()
+        public async Task<List<Game>> GetGamesAsync()
         {
-            return this.databaseConnector.GetGames();
+            // Assuming DatabaseConnector has async support
+            return await this.databaseConnector.GetGamesAsync();
         }
 
         /// <summary>
@@ -43,9 +45,9 @@ namespace Steampunks.Repository.GameRepo
         /// <returns>
         /// A Game object if a game with the specified <paramref name="gameId"/> exists; otherwise, null.
         /// </returns>
-        public Game GetGameById(int gameId)
+        public async Task<Game> GetGameByIdAsync(int gameId) 
         {
-            return this.databaseConnector.GetGameById(gameId);
+            return await this.databaseConnector.GetGameByIdAsync(gameId);
         }
     }
 }
