@@ -29,5 +29,12 @@
         /// A task with a result of the matching Game, or null if not found.
         /// </returns>
         Task<Game> GetGameByIdAsync(int gameId);
+
+        /// <summary>
+        /// Asynchronously updates a game's information in the database.
+        /// </summary>
+        /// <param name="game">The game object to update.</param>
+        /// <returns>True if update succeeded; otherwise, false.</returns>
+        Task<bool> UpdateGameAsync(Game game);
     }
 }
