@@ -5,8 +5,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Steampunks.Domain.Entities;
-using Steampunks.Services;
 using System.Threading.Tasks;
+using Steampunks.Services.MarketplaceService;
 
 namespace Steampunks.ViewModels
 {
@@ -168,7 +168,7 @@ namespace Steampunks.ViewModels
 
         private void LoadItems()
         {
-            var allItems = _marketplaceService.getAllListings();
+            var allItems = _marketplaceService.GetAllListings();
             _allCurrentItems = allItems;
             Items = new ObservableCollection<Item>(allItems);
         }

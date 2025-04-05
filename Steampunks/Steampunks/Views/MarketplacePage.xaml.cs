@@ -4,6 +4,7 @@ using Steampunks.Services;
 using Steampunks.Domain.Entities;
 using Windows.Foundation;
 using System;
+using Steampunks.Services.MarketplaceService;
 
 namespace Steampunks.Views
 {
