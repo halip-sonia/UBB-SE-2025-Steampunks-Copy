@@ -14,20 +14,20 @@
     public interface IGameRepository
     {
         /// <summary>
-        /// Retrieves all game records from the database.
+        /// Asynchronously retrieves all game records from the database.
         /// </summary>
         /// <returns>
-        /// A list of Game entities representing all games in the database.
+        /// A task representing the asynchronous operation, with a result of a list of games.
         /// </returns>
-        List<Game> GetGames();
+        Task<List<Game>> GetGamesAsync();
 
         /// <summary>
-        /// Retrieves a single game entity based on its unique identifier.
+        /// Asynchronously retrieves a single game entity based on its unique identifier.
         /// </summary>
-        /// <param name="gameId">The unique identifier of the game to retrieve.</param>
+        /// <param name="gameId">The unique identifier of the game.</param>
         /// <returns>
-        /// A Game object if a game with the specified <paramref name="gameId"/> exists; otherwise, null.
+        /// A task with a result of the matching Game, or null if not found.
         /// </returns>
-        Game GetGameById(int gameId);
+        Task<Game> GetGameByIdAsync(int gameId);
     }
 }

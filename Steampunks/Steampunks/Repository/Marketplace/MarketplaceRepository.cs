@@ -32,9 +32,9 @@ namespace Steampunks.Repository.Marketplace
         /// <returns>
         /// A list of Item objects that are currently listed for sale.
         /// </returns>
-        public List<Item> GetAllListedItems()
+        public async Task<List<Item>> GetAllListedItemsAsync()
         {
-            return this.databaseConnector.GetAllListings();
+            return await this.databaseConnector.GetAllListingsAsync();
         }
 
         /// <summary>
@@ -47,14 +47,14 @@ namespace Steampunks.Repository.Marketplace
         /// <exception cref="ArgumentNullException">
         /// Thrown when the provided <paramref name="game"/> is null.
         /// </exception>
-        public List<Item> GetListedItemsByGame(Game game)
+        public async Task<List<Item>> GetListedItemsByGameAsync(Game game)
         {
             if (game == null)
             {
                 throw new ArgumentNullException(nameof(game));
             }
 
-            return this.databaseConnector.GetListingsByGame(game);
+            return await this.databaseConnector.GetListingsByGameAsync(game);
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace Steampunks.Repository.Marketplace
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-        public void MakeItemListable(Game game, Item item)
+        public async Task MakeItemListableAsync(Game game, Item item)
         {
             if (game == null)
             {
@@ -77,8 +77,9 @@ namespace Steampunks.Repository.Marketplace
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.databaseConnector.AddListing(item);
+            await this.databaseConnector.AddListingAsync(item);
         }
+
 
         /// <summary>
         /// Marks an item as not listable in the specified game by updating its listing status.
@@ -88,7 +89,7 @@ namespace Steampunks.Repository.Marketplace
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-        public void MakeItemNotListable(Game game, Item item)
+        public async Task MakeItemNotListableAsync(Game game, Item item)
         {
             if (game == null)
             {
@@ -100,7 +101,7 @@ namespace Steampunks.Repository.Marketplace
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.databaseConnector.RemoveListing(item);
+            await this.databaseConnector.RemoveListingAsync(item);
         }
 
         /// <summary>
@@ -111,7 +112,7 @@ namespace Steampunks.Repository.Marketplace
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-        public void UpdateItemPrice(Game game, Item item)
+        public async Task UpdateItemPriceAsync(Game game, Item item)
         {
             if (game == null)
             {
@@ -123,7 +124,7 @@ namespace Steampunks.Repository.Marketplace
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.databaseConnector.UpdateListing(item);
+            await this.databaseConnector.UpdateListingAsync(item);
         }
     }
 }
