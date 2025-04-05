@@ -78,7 +78,7 @@ namespace Steampunks.Services
 
         public bool NavigateTo(string pageKey, object parameter = null, bool clearNavigation = false)
         {
-            var pageType = _pageService.GetPageType(pageKey);
+            var pageType = _pageService.GetPageTypeForViewModel(pageKey);
             if (pageType == null || !IsPageTypeValid(pageType))
             {
                 return false;
@@ -141,4 +141,4 @@ namespace Steampunks.Services
         void OnNavigatedTo(object parameter);
         void OnNavigatedFrom();
     }
-} 
+}
