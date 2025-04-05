@@ -78,7 +78,7 @@
         /// <returns> A list of Items (marketplace listings). </returns>
         public List<Item> GetAllListings()
         {
-            return this.marketplaceRepository.GetAllListings();
+            return this.marketplaceRepository.GetAllListedItems();
         }
 
         /// <summary>
@@ -94,7 +94,7 @@
                 throw new ArgumentNullException(nameof(game));
             }
 
-            return this.marketplaceRepository.GetListingsByGame(game);
+            return this.marketplaceRepository.GetListedItemsByGame(game);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.marketplaceRepository.AddListing(game, item);
+            this.marketplaceRepository.MakeItemListable(game, item);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.marketplaceRepository.RemoveListing(game, item);
+            this.marketplaceRepository.MakeItemNotListable(game, item);
         }
 
         /// <summary>
@@ -157,7 +157,7 @@
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.marketplaceRepository.UpdateListing(game, item);
+            this.marketplaceRepository.UpdateItemPrice(game, item);
         }
 
         /// <summary>
