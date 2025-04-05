@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Collections.Generic;
 using Steampunks.Domain.Entities;
+using System.Diagnostics;
 
 namespace Steampunks.DataLink
 {
@@ -1823,5 +1824,112 @@ namespace Steampunks.DataLink
                 }
             }
         }
+
+        /// <summary>
+        /// Handles the purchase of an item by removing former ownership, adding the item to the new owner's inventory,
+        /// and marking the item as unlisted.
+        /// </summary>
+        /// <param name="item"> Item to be purchased. </param>
+        /// <param name="currentUser"> User that makes the item purchase. </param>
+        /// <returns> True upon successful completion. </returns>
+        /// <exception cref="InvalidOperationException"> Thrown in case of errors in transaction. </exception>
+        public bool BuyItem(Item item, User currentUser)
+        {
+            try
+            {
+                // Start transaction
+                this.OpenConnection();
+                using (var transaction = this.GetConnection().BeginTransaction())
+                {
+                    try
+                    {
+                        int currentOwnerID = this.GetCurrentOwnerID(item, transaction);
+
+                        this.RemoveItemFromUserInventory(item, transaction);
+
+                        this.AddItemToUserInventory(item, currentUser, transaction);
+
+                        this.UpdateItemListedStatus(item, transaction);
+
+                        transaction.Commit();
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error in BuyItem transaction: {ex.Message}");
+                        Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        transaction.Rollback();
+                        throw new InvalidOperationException("Failed to complete purchase. Please try again.");
+                    }
+                }
+            }
+            finally
+            {
+                this.CloseConnection();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the ID of the current owner of an item.
+        /// </summary>
+        /// <param name="item"> Item from which the owner ID is retrieved. </param>
+        /// <param name="transaction"> SQL Transaction. </param>
+        /// <returns> The ID of the current owner of the item. </returns>
+        public int GetCurrentOwnerID(Item item, SqlTransaction transaction)
+        {
+            int currentOwnerId;
+            using (var command = new SqlCommand(@"SELECT UserId FROM UserInventory WHERE ItemId = @ItemId", this.GetConnection(), transaction))
+            {
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                currentOwnerId = (int)command.ExecuteScalar();
+            }
+
+            return currentOwnerId;
+        }
+
+        /// <summary>
+        /// Removes an item from a user's inventory.
+        /// </summary>
+        /// <param name="item"> Item to be removed from the user inventory. </param>
+        /// <param name="transaction"> SQL Transaction. </param>
+        public void RemoveItemFromUserInventory(Item item, SqlTransaction transaction)
+        {
+            using (var command = new SqlCommand(@"DELETE FROM UserInventory WHERE ItemId = @ItemId", this.GetConnection(), transaction))
+            {
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// Adds an item to the user's inventory.
+        /// </summary>
+        /// <param name="item"> Item to be added to the user inventory. </param>
+        /// <param name="user"> User that has the inventory to which the item will be added. </param>
+        /// <param name="transaction"> SQL Transaction. </param>
+        public void AddItemToUserInventory(Item item, User user, SqlTransaction transaction)
+        {
+            using (var command = new SqlCommand(@"INSERT INTO UserInventory (UserId, GameId, ItemId) VALUES (@UserId, @GameId, @ItemId)", this.GetConnection(), transaction))
+            {
+                command.Parameters.AddWithValue("@UserId", user.UserId);
+                command.Parameters.AddWithValue("@GameId", item.Game.GameId);
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// Updates the listed item status to not listed.
+        /// </summary>
+        /// <param name="item"> Item for which the listed status will be updated. </param>
+        /// <param name="transaction"> SQL Transaction. </param>
+        public void UpdateItemListedStatus(Item item, SqlTransaction transaction)
+        {
+            using (var command = new SqlCommand(@"UPDATE Items SET IsListed = 0 WHERE ItemId = @ItemId", this.GetConnection(), transaction))
+            {
+                command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                command.ExecuteNonQuery();
+            }
+        }
     }
-} 
+}

@@ -5,10 +5,11 @@ using System.Runtime.CompilerServices;
 using Steampunks.Domain.Entities;
 using System.Linq;
 using System.Collections.Generic;
-using Steampunks.Services;
 using Steampunks.DataLink;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using Steampunks.Services.InventoryService;
+using Steampunks.Services.InventoryService.InventoryService;
 
 namespace Steampunks.ViewModels
 {
