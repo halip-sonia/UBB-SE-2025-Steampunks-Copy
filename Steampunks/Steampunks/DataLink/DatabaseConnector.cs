@@ -1751,7 +1751,7 @@ namespace Steampunks.DataLink
                     _ => item.Game.Title.ToLower().Replace(" ", string.Empty).Replace(":", string.Empty)
                 };
 
-                // Return a path to the image based on the ItemId
+                // Return a path to the image based on the ItemId 
                 var path = $"ms-appx:///Assets/img/games/{gameFolder}/{item.ItemId}.png";
                 System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
