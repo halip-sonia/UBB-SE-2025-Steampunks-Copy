@@ -19,6 +19,7 @@ namespace Steampunks.DataLink
 
 
 
+
         public SqlConnection GetConnection()
         {
             if (connection == null || connection.State == ConnectionState.Closed)
