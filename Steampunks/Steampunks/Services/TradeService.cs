@@ -1,37 +1,51 @@
-using Steampunks.DataLink;
-using Steampunks.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+// <copyright file="TradeService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.Services
 {
-    public class TradeService
-    {
-        private readonly DatabaseConnector _databaseConnector;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using Steampunks.DataLink;
+    using Steampunks.Domain.Entities;
 
+    /// <summary>
+    /// Service for trading operations.
+    /// </summary>
+    public class TradeService : ITradeService
+    {
+        private readonly DatabaseConnector databaseConnector;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TradeService"/> class.
+        /// </summary>
+        /// <param name="databaseConnector">The connector to the database.</param>
         public TradeService(DatabaseConnector databaseConnector)
         {
-            _databaseConnector = databaseConnector;
+            this.databaseConnector = databaseConnector;
         }
 
+        /// <inheritdoc/>
         public async Task<List<ItemTrade>> GetActiveTradesAsync(int userId)
         {
-            return await Task.Run(() => _databaseConnector.GetActiveItemTrades(userId));
+            return await Task.Run(() => this.databaseConnector.GetActiveItemTrades(userId));
         }
 
+        /// <inheritdoc/>
         public async Task<List<ItemTrade>> GetTradeHistoryAsync(int userId)
         {
-            return await Task.Run(() => _databaseConnector.GetItemTradeHistory(userId));
+            return await Task.Run(() => this.databaseConnector.GetItemTradeHistory(userId));
         }
 
+        /// <inheritdoc/>
         public async Task CreateTradeAsync(ItemTrade trade)
         {
             await Task.Run(() =>
             {
                 try
                 {
-                    _databaseConnector.CreateItemTrade(trade);
+                    this.databaseConnector.CreateItemTrade(trade);
                 }
                 catch (Exception ex)
                 {
@@ -41,13 +55,14 @@ namespace Steampunks.Services
             });
         }
 
+        /// <inheritdoc/>
         public async Task UpdateTradeAsync(ItemTrade trade)
         {
             await Task.Run(() =>
             {
                 try
                 {
-                    _databaseConnector.UpdateItemTrade(trade);
+                    this.databaseConnector.UpdateItemTrade(trade);
                 }
                 catch (Exception ex)
                 {
@@ -57,6 +72,7 @@ namespace Steampunks.Services
             });
         }
 
+        /// <inheritdoc/>
         public async Task AcceptTradeAsync(ItemTrade trade, bool isSourceUser)
         {
             await Task.Run(() =>
@@ -72,12 +88,12 @@ namespace Steampunks.Services
                         trade.AcceptByDestinationUser();
                     }
 
-                    _databaseConnector.UpdateItemTrade(trade);
+                    this.databaseConnector.UpdateItemTrade(trade);
 
                     // If both users have accepted, complete the trade
                     if (trade.AcceptedBySourceUser && trade.AcceptedByDestinationUser)
                     {
-                        CompleteTrade(trade);
+                        this.CompleteTrade(trade);
                     }
                 }
                 catch (Exception ex)
@@ -88,6 +104,7 @@ namespace Steampunks.Services
             });
         }
 
+        /// <inheritdoc/>
         public async Task DeclineTradeAsync(ItemTrade trade)
         {
             await Task.Run(() =>
@@ -95,7 +112,7 @@ namespace Steampunks.Services
                 try
                 {
                     trade.Decline();
-                    _databaseConnector.UpdateItemTrade(trade);
+                    this.databaseConnector.UpdateItemTrade(trade);
                 }
                 catch (Exception ex)
                 {
@@ -112,17 +129,17 @@ namespace Steampunks.Services
                 // Transfer source user items to destination user
                 foreach (var item in trade.SourceUserItems)
                 {
-                    _databaseConnector.TransferItem(item.ItemId, trade.SourceUser.UserId, trade.DestinationUser.UserId);
+                    this.databaseConnector.TransferItem(item.ItemId, trade.SourceUser.UserId, trade.DestinationUser.UserId);
                 }
 
                 // Transfer destination user items to source user
                 foreach (var item in trade.DestinationUserItems)
                 {
-                    _databaseConnector.TransferItem(item.ItemId, trade.DestinationUser.UserId, trade.SourceUser.UserId);
+                    this.databaseConnector.TransferItem(item.ItemId, trade.DestinationUser.UserId, trade.SourceUser.UserId);
                 }
 
                 trade.Complete();
-                _databaseConnector.UpdateItemTrade(trade);
+                this.databaseConnector.UpdateItemTrade(trade);
             }
             catch (Exception ex)
             {
@@ -131,4 +148,4 @@ namespace Steampunks.Services
             }
         }
     }
-} 
+}
