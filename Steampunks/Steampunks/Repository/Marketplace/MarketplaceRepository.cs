@@ -57,6 +57,12 @@ namespace Steampunks.Repository.Marketplace
 
             _dbConnector.UpdateListing(item);
         }
+
+        public bool BuyItem(Item item, User currentUser)
+        {
+            return _dbConnector.BuyItem(item, currentUser);
+        }
+
     }
 
     public interface IMarketplaceRepository
@@ -66,5 +72,7 @@ namespace Steampunks.Repository.Marketplace
         void AddListing(Game game, Item item);
         void RemoveListing(Game game, Item item);
         void UpdateListing(Game game, Item item);
+        bool BuyItem(Item item, User currentUser);
+
     }
 }
