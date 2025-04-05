@@ -1,151 +1,210 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Steampunks.Domain.Entities;
-using Steampunks.ViewModels;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+// <copyright file="TradeView.xaml.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.Views
 {
+    using System;
+    using System.Linq;
+    using System.Threading.Tasks;
+    using Microsoft.UI.Xaml;
+    using Microsoft.UI.Xaml.Controls;
+    using Steampunks.Domain.Entities;
+    using Steampunks.ViewModels;
+
+    /// <summary>
+    /// Represents the page used for creating, sending, and managing trade offers between users.
+    /// </summary>
     public sealed partial class TradeView : Page
     {
-        public TradeViewModel ViewModel { get; }
+        private const string CannotSendTradeTitle = "Cannot Send Trade";
+        private const string CannotSendTradeMessage = "Please select a user to trade with, add items to trade, and provide a trade description.";
 
+        private const string ConfirmTradeTitle = "Confirm Trade";
+        private const string ConfirmTradeMessage = "Are you sure you want to send this trade offer?";
+
+        private const string AcceptTradeTitle = "Accept Trade";
+        private const string AcceptTradeMessage = "Are you sure you want to accept this trade?";
+
+        private const string DeclineTradeTitle = "Decline Trade";
+        private const string DeclineTradeMessage = "Are you sure you want to decline this trade?";
+
+        private const string PrimaryButtonSendText = "Send";
+        private const string PrimaryButtonAcceptText = "Accept";
+        private const string PrimaryButtonDeclineText = "Decline";
+        private const string CloseButtonCancelText = "Cancel";
+        private const string CloseButtonOkText = "OK";
+
+        private const int MinimumSelectedItemsCount = 1;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TradeView"/> class.
+        /// </summary>
         public TradeView()
         {
             this.InitializeComponent();
-            ViewModel = App.GetService<TradeViewModel>();
-            DataContext = this;
+            this.ViewModel = App.GetService<TradeViewModel>();
+            this.DataContext = this;
         }
 
-        private async void TradeView_Loaded(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Gets the ViewModel used for handling trade logic and data binding.
+        /// </summary>
+        public TradeViewModel ViewModel { get; }
+
+        /// <summary>
+        /// Handles page load event and initializes user and game lists.
+        /// </summary>
+        private async void OnTradeViewPageLoaded(object sender, RoutedEventArgs eventArguments)
         {
-            await ViewModel.LoadUsersAsync();
-            await ViewModel.LoadGamesAsync();
+            await this.ViewModel.LoadUsersAsync();
+            await this.ViewModel.LoadGamesAsync();
         }
 
-        private void AddSourceItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Adds selected items from source list to the trade offer.
+        /// </summary>
+        private void OnAddSourceItemButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (SourceItemsListView.SelectedItems.Count > 0)
+            if (this.SourceItemsListView.SelectedItems.Count >= MinimumSelectedItemsCount)
             {
-                foreach (var item in SourceItemsListView.SelectedItems)
+                foreach (var selectedObject in this.SourceItemsListView.SelectedItems)
                 {
-                    if (item is Item selectedItem)
+                    if (selectedObject is Item selectedItem)
                     {
-                        ViewModel.AddSourceItem(selectedItem);
+                        this.ViewModel.AddSourceItem(selectedItem);
                     }
                 }
-                SourceItemsListView.SelectedItems.Clear();
+
+                this.SourceItemsListView.SelectedItems.Clear();
             }
         }
 
-        private void AddDestinationItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Adds selected items from destination list to the trade offer.
+        /// </summary>
+        private void OnAddDestinationItemButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (DestinationItemsListView.SelectedItems.Count > 0)
+            if (this.DestinationItemsListView.SelectedItems.Count >= MinimumSelectedItemsCount)
             {
-                foreach (var item in DestinationItemsListView.SelectedItems)
+                foreach (var selectedObject in this.DestinationItemsListView.SelectedItems)
                 {
-                    if (item is Item selectedItem)
+                    if (selectedObject is Item selectedItem)
                     {
-                        ViewModel.AddDestinationItem(selectedItem);
+                        this.ViewModel.AddDestinationItem(selectedItem);
                     }
                 }
-                DestinationItemsListView.SelectedItems.Clear();
+
+                this.DestinationItemsListView.SelectedItems.Clear();
             }
         }
 
-        private void RemoveSourceItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Removes an item from the source items list.
+        /// </summary>
+        private void OnRemoveSourceItemButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (sender is Button button && button.Tag is Item item)
+            if (sender is Button clickedButton && clickedButton.Tag is Item selectedItemToRemove)
             {
-                ViewModel.RemoveSourceItem(item);
+                this.ViewModel.RemoveSourceItem(selectedItemToRemove);
             }
         }
 
-        private void RemoveDestinationItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Removes an item from the destination items list.
+        /// </summary>
+        private void OnRemoveDestinationItemButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (sender is Button button && button.Tag is Item item)
+            if (sender is Button clickedButton && clickedButton.Tag is Item selectedItemToRemove)
             {
-                ViewModel.RemoveDestinationItem(item);
+                this.ViewModel.RemoveDestinationItem(selectedItemToRemove);
             }
         }
 
-        private async void SendTradeOffer_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Sends a trade offer after showing a confirmation dialog.
+        /// </summary>
+        private async void OnSendTradeOfferButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (!ViewModel.CanSendTradeOffer)
+            if (!this.ViewModel.CanSendTradeOffer)
             {
-                var dialog = new ContentDialog
+                var cannotSendTradeDialog = new ContentDialog
                 {
-                    Title = "Cannot Send Trade",
-                    Content = "Please select a user to trade with, add items to trade, and provide a trade description.",
-                    CloseButtonText = "OK",
-                    XamlRoot = this.XamlRoot
+                    Title = CannotSendTradeTitle,
+                    Content = CannotSendTradeMessage,
+                    CloseButtonText = CloseButtonOkText,
+                    XamlRoot = this.XamlRoot,
                 };
 
-                await dialog.ShowAsync();
+                await cannotSendTradeDialog.ShowAsync();
                 return;
             }
 
-            var confirmDialog = new ContentDialog
+            var confirmSendTradeDialog = new ContentDialog
             {
-                Title = "Confirm Trade",
-                Content = "Are you sure you want to send this trade offer?",
-                PrimaryButtonText = "Send",
-                CloseButtonText = "Cancel",
-                XamlRoot = this.XamlRoot
+                Title = ConfirmTradeTitle,
+                Content = ConfirmTradeMessage,
+                PrimaryButtonText = PrimaryButtonSendText,
+                CloseButtonText = CloseButtonCancelText,
+                XamlRoot = this.XamlRoot,
             };
 
-            var result = await confirmDialog.ShowAsync();
+            var userDialogResult = await confirmSendTradeDialog.ShowAsync();
 
-            if (result == ContentDialogResult.Primary)
+            if (userDialogResult == ContentDialogResult.Primary)
             {
-                await ViewModel.CreateTradeOffer();
+                await this.ViewModel.CreateTradeOffer();
             }
         }
 
-        private async void AcceptTrade_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Accepts a trade offer after showing a confirmation dialog.
+        /// </summary>
+        private async void OnAcceptTradeButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (sender is Button button && button.Tag is ItemTrade trade)
+            if (sender is Button clickedButton && clickedButton.Tag is ItemTrade tradeToAccept)
             {
-                var confirmDialog = new ContentDialog
+                var confirmAcceptTradeDialog = new ContentDialog
                 {
-                    Title = "Accept Trade",
-                    Content = "Are you sure you want to accept this trade?",
-                    PrimaryButtonText = "Accept",
-                    CloseButtonText = "Cancel",
-                    XamlRoot = this.XamlRoot
+                    Title = AcceptTradeTitle,
+                    Content = AcceptTradeMessage,
+                    PrimaryButtonText = PrimaryButtonAcceptText,
+                    CloseButtonText = CloseButtonCancelText,
+                    XamlRoot = this.XamlRoot,
                 };
 
-                var result = await confirmDialog.ShowAsync();
+                var userDialogResult = await confirmAcceptTradeDialog.ShowAsync();
 
-                if (result == ContentDialogResult.Primary)
+                if (userDialogResult == ContentDialogResult.Primary)
                 {
-                   ViewModel.AcceptTrade(trade);
+                    this.ViewModel.AcceptTrade(tradeToAccept);
                 }
             }
         }
 
-        private async void DeclineTrade_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Declines a trade offer after showing a confirmation dialog.
+        /// </summary>
+        private async void OnDeclineTradeButtonClicked(object sender, RoutedEventArgs eventArguments)
         {
-            if (sender is Button button && button.Tag is ItemTrade trade)
+            if (sender is Button clickedButton && clickedButton.Tag is ItemTrade tradeToDecline)
             {
-                var confirmDialog = new ContentDialog
+                var confirmDeclineTradeDialog = new ContentDialog
                 {
-                    Title = "Decline Trade",
-                    Content = "Are you sure you want to decline this trade?",
-                    PrimaryButtonText = "Decline",
-                    CloseButtonText = "Cancel",
-                    XamlRoot = this.XamlRoot
+                    Title = DeclineTradeTitle,
+                    Content = DeclineTradeMessage,
+                    PrimaryButtonText = PrimaryButtonDeclineText,
+                    CloseButtonText = CloseButtonCancelText,
+                    XamlRoot = this.XamlRoot,
                 };
 
-                var result = await confirmDialog.ShowAsync();
+                var userDialogResult = await confirmDeclineTradeDialog.ShowAsync();
 
-                if (result == ContentDialogResult.Primary)
+                if (userDialogResult == ContentDialogResult.Primary)
                 {
-                    await ViewModel.DeclineTrade(trade);
+                    await this.ViewModel.DeclineTrade(tradeToDecline);
                 }
             }
         }
     }
-} 
+}
