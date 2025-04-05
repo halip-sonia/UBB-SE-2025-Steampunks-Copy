@@ -16,7 +16,7 @@ namespace Steampunks.Services
     /// <summary>
     /// Provides operations for retrieving and updating game data.
     /// </summary>
-    public class GameService
+    public class GameService : IGameService
     {
         private readonly DatabaseConnector databaseConnector;
 
