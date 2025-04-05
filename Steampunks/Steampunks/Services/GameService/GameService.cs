@@ -45,7 +45,7 @@ namespace Steampunks.Services
         /// <returns>The game with the specified ID.</returns>
         public async Task<Game> GetGameByIdAsync(int gameId)
         {
-            return await Task.Run(() => this.databaseConnector.GetGameById(gameId));
+            return await Task.Run(() => this.databaseConnector.GetGameByIdAsync(gameId));
         }
 
         /// <summary>

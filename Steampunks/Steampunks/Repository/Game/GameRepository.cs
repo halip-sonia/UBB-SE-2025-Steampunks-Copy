@@ -45,7 +45,7 @@ namespace Steampunks.Repository.GameRepo
         /// <returns>
         /// A Game object if a game with the specified <paramref name="gameId"/> exists; otherwise, null.
         /// </returns>
-        public async Task<Game> GetGameByIdAsync(int gameId)
+        public async Task<Game> GetGameByIdAsync(int gameId) 
         {
             return await this.databaseConnector.GetGameByIdAsync(gameId);
         }

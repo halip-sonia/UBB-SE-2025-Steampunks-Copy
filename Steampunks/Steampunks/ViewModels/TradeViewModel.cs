@@ -465,7 +465,7 @@ namespace Steampunks.ViewModels
         {
             try
             {
-                // var games = this.dbConnector.GetGames();
+                // var games = this.dbConnector.GetGamesAsync();
                 var games = await this.gameService.GetAllGamesAsync();
 
                 this.Games.Clear();
