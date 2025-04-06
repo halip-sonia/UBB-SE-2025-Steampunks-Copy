@@ -12,21 +12,22 @@ namespace Steampunks.Services
     using System.Threading.Tasks;
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
+    using Steampunks.Repository.GameRepo;
 
     /// <summary>
     /// Provides operations for retrieving and updating game data.
     /// </summary>
     public class GameService : IGameService
     {
-        private readonly DatabaseConnector databaseConnector;
+        private readonly IGameRepository gameRepository;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GameService"/> class.
         /// </summary>
         /// <param name="databaseConnector">Database connector for accessing game data.</param>
-        public GameService(DatabaseConnector databaseConnector)
+        public GameService(IGameRepository gameRepository) 
         {
-            this.databaseConnector = databaseConnector;
+                this.gameRepository = gameRepository;
         }
 
         /// <summary>
@@ -35,7 +36,7 @@ namespace Steampunks.Services
         /// <returns>A list of all games.</returns>
         public async Task<List<Game>> GetAllGamesAsync()
         {
-            return await Task.Run(() => this.databaseConnector.GetAllGames());
+            return await this.gameRepository.GetGamesAsync();
         }
 
         /// <summary>
@@ -45,7 +46,7 @@ namespace Steampunks.Services
         /// <returns>The game with the specified ID.</returns>
         public async Task<Game> GetGameByIdAsync(int gameId)
         {
-            return await Task.Run(() => this.databaseConnector.GetGameByIdAsync(gameId));
+            return await this.gameRepository.GetGameByIdAsync(gameId);
         }
 
         /// <summary>
@@ -55,7 +56,7 @@ namespace Steampunks.Services
         /// <returns>True if update succeeded; otherwise, false.</returns>
         public async Task<bool> UpdateGameAsync(Game game)
         {
-            return await Task.Run(() => this.databaseConnector.UpdateGame(game));
+            return await this.gameRepository.UpdateGameAsync(game);
         }
     }
 }
