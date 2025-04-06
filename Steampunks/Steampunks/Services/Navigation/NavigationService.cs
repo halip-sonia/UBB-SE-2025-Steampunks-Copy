@@ -44,9 +44,9 @@ namespace Steampunks.Services
         {
             if (this.CanGoBack)
             {
-                var vmBeforeNavigation = this.frame.GetPageViewModel();
-                this.frame.GoBack();
-                if (vmBeforeNavigation is INavigationAware navigationAware)
+                var viewModelBeforeNavigation = this.frame?.GetPageViewModel();
+                this.frame?.GoBack();
+                if (viewModelBeforeNavigation is INavigationAware navigationAware)
                 {
                     navigationAware.OnNavigatedFrom();
                 }
@@ -59,7 +59,7 @@ namespace Steampunks.Services
 
         public bool NavigateTo(string pageKey, object? parameter = null, bool clearNavigation = false)
         {
-            var pageType = this.pageService.GetPageTypeForViewModel(pageKey);
+            var pageType = this.pageService?.GetPageTypeForViewModel(pageKey);
             if (pageType == null || !this.IsPageTypeValid(pageType))
             {
                 return false;
@@ -68,12 +68,12 @@ namespace Steampunks.Services
             if (this.Frame.Content?.GetType() != pageType || (parameter != null && !parameter.Equals(this.lastParameterUsed)))
             {
                 this.frame.Tag = clearNavigation;
-                var vmBeforeNavigation = this.frame.GetPageViewModel();
+                var viewModelBeforeNavigation = this.frame.GetPageViewModel();
                 var navigated = this.frame.Navigate(pageType, parameter);
                 if (navigated)
                 {
                     this.lastParameterUsed = parameter;
-                    if (vmBeforeNavigation is INavigationAware navigationAware)
+                    if (viewModelBeforeNavigation is INavigationAware navigationAware)
                     {
                         navigationAware.OnNavigatedFrom();
                     }
