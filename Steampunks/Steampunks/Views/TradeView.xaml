@@ -143,7 +143,7 @@
                                 </StackPanel>
                                 <Button Grid.Column="2" 
                                         Content="Remove" 
-                                        Click="RemoveSourceItem_Click"
+                                        Click="OnRemoveSourceItemButtonClicked"
                                         Tag="{Binding}"/>
                             </Grid>
                         </DataTemplate>
@@ -156,10 +156,10 @@
                         VerticalAlignment="Center" 
                         Margin="20,0">
                 <Button Content="Add &#x3E;" 
-                        Click="AddSourceItem_Click"
+                        Click="OnAddSourceItemButtonClicked"
                         Margin="0,0,0,10"/>
                 <Button Content="&#x3C; Add" 
-                        Click="AddDestinationItem_Click"/>
+                        Click="OnAddDestinationItemButtonClicked"/>
             </StackPanel>
 
             <!-- Their Items -->
@@ -234,7 +234,7 @@
                                 </StackPanel>
                                 <Button Grid.Column="2" 
                                         Content="Remove" 
-                                        Click="RemoveDestinationItem_Click"
+                                        Click="OnRemoveDestinationItemButtonClicked"
                                         Tag="{Binding}"/>
                             </Grid>
                         </DataTemplate>
@@ -257,7 +257,7 @@
 
             <Button Content="Send Trade Offer" 
                     Grid.Column="1"
-                    Click="SendTradeOffer_Click"
+                    Click="OnSendTradeOfferButtonClicked"
                     IsEnabled="{x:Bind ViewModel.CanSendTradeOffer, Mode=OneWay}"
                     Style="{StaticResource AccentButtonStyle}"/>
         </Grid>
