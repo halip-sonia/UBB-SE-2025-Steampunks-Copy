@@ -64,7 +64,7 @@
                   ItemsSource="{Binding Items}"
                   SelectionMode="Single"
                   IsItemClickEnabled="True"
-                  ItemClick="GridView_ItemClick">
+                  ItemClick="OnMarketplaceGridViewItemClicked">
             <GridView.ItemTemplate>
                 <DataTemplate>
                     <Grid Width="200" Height="250">
