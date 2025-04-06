@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace Steampunks.Views
+namespace Steampunks.Views.Converters
 {
     using System;
     using Microsoft.UI.Xaml.Data;
