@@ -1,8 +1,13 @@
-﻿namespace Steampunks.Services.MarketplaceService
+﻿// <copyright file="MarketplaceService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+namespace Steampunks.Services.MarketplaceService
 {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Threading.Tasks;
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
     using Steampunks.Repository.Marketplace;
@@ -14,7 +19,7 @@
     {
         private readonly IMarketplaceRepository marketplaceRepository;
         private readonly DatabaseConnector dataBaseConnector;
-        private User currentUser;
+        private User? currentUser;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MarketplaceService"/> class.
@@ -50,7 +55,6 @@
         /// </summary>
         /// <param name="user"> User to be set. </param>
         /// <exception cref="ArgumentNullException"> Thrown if user is null. </exception>
-
         public void SetCurrentUser(User user)
         {
             if (user != null)
@@ -67,18 +71,18 @@
         /// Retrieve all users from the database.
         /// </summary>
         /// <returns> A list of all Users. </returns>
-        public List<User> GetAllUsers()
+        public async Task<List<User>> GetAllUsersAsync()
         {
-            return this.dataBaseConnector.GetAllUsers();
+            return await this.dataBaseConnector.GetAllUsersAsync();
         }
 
         /// <summary>
         /// Retrieves all the listings in the marketplace.
         /// </summary>
         /// <returns> A list of Items (marketplace listings). </returns>
-        public List<Item> GetAllListings()
+        public async Task<List<Item>> GetAllListingsAsync()
         {
-            return this.marketplaceRepository.GetAllListedItems();
+            return await this.marketplaceRepository.GetAllListedItemsAsync();
         }
 
         /// <summary>
@@ -87,14 +91,14 @@
         /// <param name="game"> Game for which the listing is retrieved. </param>
         /// <returns> A list of Items (marketplace listings). </returns>
         /// <exception cref="ArgumentNullException"> Thrown if game is null. </exception>
-        public List<Item> GetListingsByGame(Game game)
+        public async Task<List<Item>> GetListingsByGameAsync(Game game)
         {
             if (game == null)
             {
                 throw new ArgumentNullException(nameof(game));
             }
 
-            return this.marketplaceRepository.GetListedItemsByGame(game);
+            return await this.marketplaceRepository.GetListedItemsByGameAsync(game);
         }
 
         /// <summary>
@@ -103,7 +107,8 @@
         /// <param name="game"> Game from which the item to be listed is. </param>
         /// <param name="item"> Item to be added as listing. </param>
         /// <exception cref="ArgumentNullException"> Thrown if either the game or item is null. </exception>
-        public void AddListing(Game game, Item item)
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
+        public async Task AddListingAsync(Game game, Item item)
         {
             if (game == null)
             {
@@ -115,7 +120,7 @@
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.marketplaceRepository.MakeItemListable(game, item);
+            await this.marketplaceRepository.MakeItemListableAsync(game, item);
         }
 
         /// <summary>
@@ -124,7 +129,8 @@
         /// <param name="game"> Game from which the item to be listed is. </param>
         /// <param name="item"> Item listing to be removed. </param>
         /// <exception cref="ArgumentNullException"> Thrown if either the game or item is null. </exception>
-        public void RemoveListing(Game game, Item item)
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
+        public async Task RemoveListingAsync(Game game, Item item)
         {
             if (game == null)
             {
@@ -136,7 +142,7 @@
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.marketplaceRepository.MakeItemNotListable(game, item);
+            await this.marketplaceRepository.MakeItemListableAsync(game, item);
         }
 
         /// <summary>
@@ -145,7 +151,8 @@
         /// <param name="game"> Game from which the item to be listed is. </param>
         /// <param name="item"> Item listing to be updated. </param>
         /// <exception cref="ArgumentNullException"> Thrown if either the game or item is null. </exception>
-        public void UpdateListing(Game game, Item item)
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
+        public async Task UpdateListingAsync(Game game, Item item)
         {
             if (game == null)
             {
@@ -157,7 +164,7 @@
                 throw new ArgumentNullException(nameof(item));
             }
 
-            this.marketplaceRepository.UpdateItemPrice(game, item);
+            await this.marketplaceRepository.UpdateItemPriceAsync(game, item);
         }
 
         /// <summary>
@@ -168,7 +175,7 @@
         /// <returns> True upon successful purchase. </returns>
         /// <exception cref="ArgumentNullException"> Thrown when the item is null. </exception>
         /// <exception cref="InvalidOperationException"> Thrown when either the item is not listed or when the current user is null. </exception>
-        public bool BuyItem(Item item)
+        public async Task<bool> BuyItemAsync(Item item)
         {
             if (item == null)
             {
@@ -185,7 +192,7 @@
                 throw new InvalidOperationException("No user selected");
             }
 
-            return this.marketplaceRepository.BuyItem(item, this.currentUser);
+            return await this.marketplaceRepository.BuyItemAsync(item, this.currentUser);
         }
     }
 }

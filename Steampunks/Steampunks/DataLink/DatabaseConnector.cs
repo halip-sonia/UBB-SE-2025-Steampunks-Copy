@@ -16,7 +16,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.CONNECTIONSTRINGDARIUS;
+            this.connectionString = Configuration.CONNECTIONSTRINGSONIA;
         }
 
         public SqlConnection GetConnection()
@@ -363,6 +363,41 @@ namespace Steampunks.DataLink
                 finally
                 {
                     this.CloseConnection();
+                }
+            }
+
+            return users;
+        }
+
+        public async Task<List<User>> GetAllUsersAsync()
+        {
+            var users = new List<User>();
+            using (var command = new SqlCommand("SELECT UserId, Username FROM Users", this.GetConnection()))
+            {
+                try
+                {
+                    await this.OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        while (reader.Read())
+                        {
+                            var user = new User(reader.GetString(reader.GetOrdinal("Username")));
+                            user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
+                            users.Add(user);
+                        }
+
+                        if (users.Count == 0)
+                        {
+                            // If no users exist, create test users
+                            await this.CloseConnectionAsync();
+                            this.InsertTestUsers();
+                            return await this.GetAllUsersAsync(); // Recursive call to get the newly inserted users
+                        }
+                    }
+                }
+                finally
+                {
+                    await this.CloseConnectionAsync();
                 }
             }
 
@@ -1768,7 +1803,7 @@ namespace Steampunks.DataLink
             }
         }
 
-        private string GetItemImagePath(Item item)
+        internal string GetItemImagePath(Item item)
         {
             try
             {

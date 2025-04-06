@@ -5,12 +5,11 @@
 namespace Steampunks.Views
 {
     using System;
+    using Microsoft.UI.Xaml;
     using Microsoft.UI.Xaml.Controls;
     using Steampunks.Domain.Entities;
-    using Steampunks.Services;
     using Steampunks.Services.MarketplaceService;
     using Steampunks.ViewModels;
-    using Windows.Foundation;
 
     /// <summary>
     /// Represents the page that displays items available in the marketplace.
@@ -23,6 +22,7 @@ namespace Steampunks.Views
         private const string SuccessDialogTitle = "Success";
         private const string ItemPurchasedMessage = "Item purchased successfully!";
         private const string UnexpectedErrorMessage = "An unexpected error occurred. Please try again.";
+        private readonly MarketplaceViewModel marketplaceViewModel;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MarketplacePage"/> class.
@@ -32,7 +32,14 @@ namespace Steampunks.Views
             this.InitializeComponent();
 
             var marketplaceServiceInstance = new MarketplaceService(new Repository.Marketplace.MarketplaceRepository());
-            this.DataContext = new MarketplaceViewModel(marketplaceServiceInstance);
+            this.marketplaceViewModel = new MarketplaceViewModel(marketplaceServiceInstance);
+            this.DataContext = this.marketplaceViewModel;
+            this.Loaded += this.OnMarketplacePageLoaded;
+        }
+
+        private async void OnMarketplacePageLoaded(object sender, RoutedEventArgs e)
+        {
+            await this.marketplaceViewModel.InitializeViewModelAsync();
         }
 
         /// <summary>

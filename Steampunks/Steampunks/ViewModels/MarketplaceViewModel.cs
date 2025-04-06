@@ -1,218 +1,288 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using Steampunks.Domain.Entities;
-using System.Threading.Tasks;
-using Steampunks.Services.MarketplaceService;
+// <copyright file="MarketplaceViewModel.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.ViewModels
 {
-    public class MarketplaceViewModel : INotifyPropertyChanged
-    {
-        private readonly MarketplaceService _marketplaceService;
-        private ObservableCollection<Item> _items;
-        private string _searchText;
-        private string _selectedGame;
-        private string _selectedType;
-        private string _selectedRarity;
-        private List<Item> _allCurrentItems;
-        private Item _selectedItem;
-        private User _currentUser;
-        private ObservableCollection<User> _availableUsers;
+    using System;
+    using System.Collections.Generic;
+    using System.Collections.ObjectModel;
+    using System.ComponentModel;
+    using System.Linq;
+    using System.Runtime.CompilerServices;
+    using System.Threading.Tasks;
+    using Steampunks.Domain.Entities;
+    using Steampunks.Services.MarketplaceService;
 
+    /// <summary>
+    /// ViewModel for the Marketplace Page.
+    /// </summary>
+    public partial class MarketplaceViewModel : INotifyPropertyChanged
+    {
+        private readonly IMarketplaceService marketplaceService;
+        private ObservableCollection<Item> items;
+        private string searchText;
+        private string selectedGame;
+        private string selectedType;
+        private string selectedRarity;
+        private List<Item> allCurrentItems;
+        private Item selectedItem;
+        private User currentUser;
+        private ObservableCollection<User> availableUsers;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MarketplaceViewModel"/> class.
+        /// </summary>
+        /// <param name="marketplaceService"> Marketplace service used for the ViewModel. </param>
+        public MarketplaceViewModel(IMarketplaceService marketplaceService)
+        {
+            this.marketplaceService = marketplaceService;
+        }
+
+        /// <inheritdoc/>
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        /// <summary>
+        /// Gets or sets the AvailableGames ObservableCollection.
+        /// </summary>
+        public ObservableCollection<string> AvailableGames { get; set; }
+
+        /// <summary>
+        /// Gets or sets the AvailableTypes ObservableCollection.
+        /// </summary>
+        public ObservableCollection<string> AvailableTypes { get; set; }
+
+        /// <summary>
+        /// Gets or sets the AvailableRarities ObservableCollection.
+        /// </summary>
+        public ObservableCollection<string> AvailableRarities { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Items ObservableCollection.
+        /// </summary>
         public ObservableCollection<Item> Items
         {
-            get => _items;
+            get => this.items;
             set
             {
-                _items = value;
-                OnPropertyChanged();
+                this.items = value;
+                this.OnPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// Gets or sets the SearchText.
+        /// </summary>
         public string SearchText
         {
-            get => _searchText;
+            get => this.searchText;
             set
             {
-                _searchText = value;
-                FilterItems();
-                OnPropertyChanged();
+                this.searchText = value;
+                this.FilterItems();
+                this.OnPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// Gets or sets the SelectedGame.
+        /// </summary>
         public string SelectedGame
         {
-            get => _selectedGame;
+            get => this.selectedGame;
             set
             {
-                _selectedGame = value;
-                FilterItems();
-                OnPropertyChanged();
+                this.selectedGame = value;
+                this.FilterItems();
+                this.OnPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// Gets or sets the SelectedType.
+        /// </summary>
         public string SelectedType
         {
-            get => _selectedType;
+            get => this.selectedType;
             set
             {
-                _selectedType = value;
-                FilterItems();
-                OnPropertyChanged();
+                this.selectedType = value;
+                this.FilterItems();
+                this.OnPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// Gets or sets the SelectedRarity.
+        /// </summary>
         public string SelectedRarity
         {
-            get => _selectedRarity;
+            get => this.selectedRarity;
             set
             {
-                _selectedRarity = value;
-                FilterItems();
-                OnPropertyChanged();
+                this.selectedRarity = value;
+                this.FilterItems();
+                this.OnPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// Gets or sets the SelectedItem.
+        /// </summary>
         public Item SelectedItem
         {
-            get => _selectedItem;
+            get => this.selectedItem;
             set
             {
-                if (_selectedItem != value)
+                if (this.selectedItem != value)
                 {
-                    _selectedItem = value;
-                    OnPropertyChanged(nameof(SelectedItem));
-                    OnPropertyChanged(nameof(CanBuyItem));
+                    this.selectedItem = value;
+                    this.OnPropertyChanged(nameof(this.SelectedItem));
+                    this.OnPropertyChanged(nameof(this.CanBuyItem));
                 }
             }
         }
 
+        /// <summary>
+        /// Gets or sets the CurrentUser.
+        /// </summary>
         public User CurrentUser
         {
-            get => _currentUser;
+            get => this.currentUser;
             set
             {
-                if (_currentUser != value)
+                if (this.currentUser != value)
                 {
-                    _currentUser = value;
-                    _marketplaceService.SetCurrentUser(value);
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(CanBuyItem));
+                    this.currentUser = value;
+                    this.marketplaceService.SetCurrentUser(value);
+                    this.OnPropertyChanged();
+                    this.OnPropertyChanged(nameof(this.CanBuyItem));
                 }
             }
         }
 
+        /// <summary>
+        /// Gets or sets the AvailableUsers ObservableCollection.
+        /// </summary>
         public ObservableCollection<User> AvailableUsers
         {
-            get => _availableUsers;
+            get => this.availableUsers;
             set
             {
-                _availableUsers = value;
-                OnPropertyChanged();
+                this.availableUsers = value;
+                this.OnPropertyChanged();
             }
         }
 
-        public bool CanBuyItem => SelectedItem != null && SelectedItem.IsListed && CurrentUser != null;
+        /// <summary>
+        /// Gets a value indicating whether the item selected can be bought (if it is not null, listed and if
+        /// the current user is not null).
+        /// </summary>
+        public bool CanBuyItem => this.SelectedItem != null && this.SelectedItem.IsListed && this.CurrentUser != null;
 
+        /// <summary>
+        /// Handles the purchase of an item by removing former ownership, adding the item to the new owner's inventory,
+        /// and marking the item as unlisted.
+        /// </summary>
+        /// <returns> True upon successful purchase. </returns>
+        /// <exception cref="InvalidOperationException"> Thrown when either the selected item or current user is null,
+        /// and if the selected item is not listed for purchase. </exception>
         public async Task<bool> BuyItemAsync()
         {
-            if (SelectedItem == null || !SelectedItem.IsListed || CurrentUser == null)
+            if (this.SelectedItem == null || !this.SelectedItem.IsListed || this.CurrentUser == null)
+            {
                 throw new InvalidOperationException("Cannot buy item: Invalid state");
+            }
 
             try
             {
-                bool success = _marketplaceService.BuyItem(SelectedItem);
+                bool success = await this.marketplaceService.BuyItemAsync(this.SelectedItem);
                 if (success)
                 {
-                    // Refresh the items list
-                    LoadItems();
+                    // Refresh the items list.
+                    await this.LoadItemsAsync();
                     return true;
                 }
+
                 throw new InvalidOperationException("Failed to buy item");
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                // Re-throw specific error messages
+                // Re-throw specific error messages.
                 throw;
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                System.Diagnostics.Debug.WriteLine($"Error buying item: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error buying item: {exception.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {exception.StackTrace}");
                 throw new InvalidOperationException("An error occurred while buying the item. Please try again.");
             }
         }
 
-        public ObservableCollection<string> AvailableGames { get; set; }
-        public ObservableCollection<string> AvailableTypes { get; set; }
-        public ObservableCollection<string> AvailableRarities { get; set; }
-
-        public MarketplaceViewModel(MarketplaceService marketplaceService)
+        /// <summary>
+        /// Initializes the ViewModel by asynchronously loading the items and users, as well as initializing the ObservableCollections.
+        /// </summary>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        internal async Task InitializeViewModelAsync()
         {
-            _marketplaceService = marketplaceService;
-            LoadUsers();
-            LoadItems();
-            InitializeCollections();
+            await this.LoadUsersAsync();
+            await this.LoadItemsAsync();
+            this.InitializeCollections();
         }
 
-        private void LoadUsers()
+        private async Task LoadUsersAsync()
         {
-            var users = _marketplaceService.GetAllUsers();
-            AvailableUsers = new ObservableCollection<User>(users);
-            CurrentUser = _marketplaceService.GetCurrentUser();
+            var users = await this.marketplaceService.GetAllUsersAsync();
+            this.AvailableUsers = new ObservableCollection<User>(users);
+            this.CurrentUser = this.marketplaceService.GetCurrentUser();
         }
 
-        private void LoadItems()
+        private async Task LoadItemsAsync()
         {
-            var allItems = _marketplaceService.GetAllListings();
-            _allCurrentItems = allItems;
-            Items = new ObservableCollection<Item>(allItems);
+            var allItems = await this.marketplaceService.GetAllListingsAsync();
+            this.allCurrentItems = allItems;
+            this.Items = new ObservableCollection<Item>(allItems);
         }
 
         private void InitializeCollections()
         {
-            var allItems = Items.ToList();
-            AvailableGames = new ObservableCollection<string>(allItems.Select(i => i.Game.Title).Distinct());
-            AvailableTypes = new ObservableCollection<string>(allItems.Select(i => i.ItemName.Split('|').First().Trim()).Distinct());
-            AvailableRarities = new ObservableCollection<string>(new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary" });
+            var allItems = this.Items.ToList();
+            this.AvailableGames = new ObservableCollection<string>(allItems.Select(i => i.Game.Title).Distinct());
+            this.AvailableTypes = new ObservableCollection<string>(allItems.Select(i => i.ItemName.Split('|').First().Trim()).Distinct());
+            this.AvailableRarities = new ObservableCollection<string>(new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary" });
         }
 
         private void FilterItems()
         {
-            var filteredItems = _allCurrentItems.AsQueryable();
+            var filteredItems = this.allCurrentItems.AsQueryable();
 
-            if (!string.IsNullOrEmpty(SearchText))
+            if (!string.IsNullOrEmpty(this.SearchText))
             {
-                var searchTextLower = SearchText.ToLower();
-                filteredItems = filteredItems.Where(i => 
+                var searchTextLower = this.SearchText.ToLower();
+                filteredItems = filteredItems.Where(i =>
                     i.ItemName.ToLower().Contains(searchTextLower) ||
                     i.Description.ToLower().Contains(searchTextLower));
             }
 
-            if (!string.IsNullOrEmpty(SelectedGame))
+            if (!string.IsNullOrEmpty(this.SelectedGame))
             {
-                filteredItems = filteredItems.Where(i => i.Game.Title == SelectedGame);
+                filteredItems = filteredItems.Where(i => i.Game.Title == this.SelectedGame);
             }
 
-            if (!string.IsNullOrEmpty(SelectedType))
+            if (!string.IsNullOrEmpty(this.SelectedType))
             {
-                filteredItems = filteredItems.Where(i => 
-                    i.ItemName.IndexOf('|') > 0 
-                        ? i.ItemName.Substring(0, i.ItemName.IndexOf('|')).Trim() == SelectedType
-                        : i.ItemName.Trim() == SelectedType);
+                filteredItems = filteredItems.Where(i =>
+                    i.ItemName.IndexOf('|') > 0
+                        ? i.ItemName.Substring(0, i.ItemName.IndexOf('|')).Trim() == this.SelectedType
+                        : i.ItemName.Trim() == this.SelectedType);
             }
 
-            Items = new ObservableCollection<Item>(filteredItems);
+            this.Items = new ObservableCollection<Item>(filteredItems);
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
