@@ -2,19 +2,21 @@ namespace Steampunks.Repository.Inventory
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using Microsoft.Data.SqlClient;
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
+    using Steampunks.Utils;
 
     /// <summary>
     /// Provides functionality to manage inventory items associated with users and games.
     /// </summary>
     public class InventoryRepository : IInventoryRepository
     {
-        /// <summary>
-        /// The database connector used for inventory-related data operations.
-        /// </summary>
-        private readonly DatabaseConnector dataBaseConnector;
+        private readonly string connectionString;
+        private SqlConnection? connection;
 
+        private DatabaseConnector? dataBaseConnector;
         /// <summary>
         /// Initializes a new instance of the <see cref="InventoryRepository"/> class.
         /// </summary>
@@ -28,15 +30,56 @@ namespace Steampunks.Repository.Inventory
         /// </summary>
         /// <param name="game">The game whose inventory items are to be retrieved.</param>
         /// <returns>A list of <see cref="Item"/> objects associated with the specified game.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if the <paramref name="game"/> is null.</exception>
-        public List<Item> GetItemsFromInventory(Game game)
+        /// <exception cref="ArgumentNullException">Thrown if the <paramref name="game"/> is null.</exception>.
+        public async Task<List<Item>> GetInventoryItemsAsync(Game game)
         {
             if (game == null)
             {
                 throw new ArgumentNullException(nameof(game));
             }
 
-            return this.dataBaseConnector.GetInventoryItems(game);
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed
+                FROM Items i
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId
+                WHERE ui.GameId = @GameId AND ui.UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@UserId", this.dataBaseConnector.GetCurrentUser().UserId);
+                    await this.dataBaseConnector.OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                    {
+                        while (await reader.ReadAsync().ConfigureAwait(false))
+                        {
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                this.dataBaseConnector.CloseConnection();
+            }
+
+            return items;
         }
 
         /// <summary>
@@ -44,15 +87,71 @@ namespace Steampunks.Repository.Inventory
         /// </summary>
         /// <param name="user">The user whose inventory is to be retrieved.</param>
         /// <returns>A list of all <see cref="Item"/> objects belonging to the specified user.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if the <paramref name="user"/> is null.</exception>
-        public List<Item> GetAllItemsFromInventory(User user)
+        /// <exception cref="ArgumentNullException">Thrown if the <paramref name="user"/> is null.</exception>.
+        public async Task<List<Item>> GetAllInventoryItemsAsync(User user)
         {
             if (user == null)
             {
                 throw new ArgumentNullException(nameof(user));
             }
 
-            return this.dataBaseConnector.GetAllInventoryItems(user);
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Price as GamePrice,
+                    g.Status as GameStatus
+                FROM Items i
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId
+                JOIN Games g ON ui.GameId = g.GameId
+                WHERE ui.UserId = @UserId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    this.dataBaseConnector.OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                    {
+                        while (await reader.ReadAsync().ConfigureAwait(false))
+                        {
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription"))
+                            );
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description"))
+                            );
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                this.dataBaseConnector.CloseConnection();
+            }
+
+            return items;
         }
 
         /// <summary>
@@ -64,24 +163,34 @@ namespace Steampunks.Repository.Inventory
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="game"/>, <paramref name="item"/>, or <paramref name="user"/> is null.
         /// </exception>
-        public void AddItemToInventory(Game game, Item item, User user)
+        /// <returns>AddInventoryItemAsync returns <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task AddInventoryItemAsync(Game game, Item item, User user)
         {
-            if (game == null)
-            {
-                throw new ArgumentNullException(nameof(game));
-            }
+            ArgumentNullException.ThrowIfNull(game);
 
-            if (item == null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
+            ArgumentNullException.ThrowIfNull(item);
 
-            if (user == null)
-            {
-                throw new ArgumentNullException(nameof(user));
-            }
+            ArgumentNullException.ThrowIfNull(user);
 
-            this.dataBaseConnector.AddInventoryItem(game, item, user);
+            const string query = @"
+                INSERT INTO UserInventory (UserId, GameId, ItemId)
+                VALUES (@UserId, @GameId, @ItemId)";
+
+            try
+            {
+                using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    await this.dataBaseConnector.OpenConnectionAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                this.dataBaseConnector.CloseConnection();
+            }
         }
 
         /// <summary>
@@ -93,24 +202,34 @@ namespace Steampunks.Repository.Inventory
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="game"/>, <paramref name="item"/>, or <paramref name="user"/> is null.
         /// </exception>
-        public void RemoveItemFromInventory(Game game, Item item, User user)
+        /// <returns>RemoveInventoryItemAsync returns <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task RemoveInventoryItemAsync(Game game, Item item, User user)
         {
-            if (game == null)
-            {
-                throw new ArgumentNullException(nameof(game));
-            }
+            ArgumentNullException.ThrowIfNull(game);
 
-            if (item == null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
+            ArgumentNullException.ThrowIfNull(item);
 
-            if (user == null)
-            {
-                throw new ArgumentNullException(nameof(user));
-            }
+            ArgumentNullException.ThrowIfNull(user);
 
-            this.dataBaseConnector.RemoveInventoryItem(game, item, user);
+            const string query = @"
+                DELETE FROM UserInventory 
+                WHERE UserId = @UserId AND GameId = @GameId AND ItemId = @ItemId";
+
+            try
+            {
+                using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", user.UserId);
+                    command.Parameters.AddWithValue("@GameId", game.GameId);
+                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    this.dataBaseConnector.OpenConnectionAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                this.dataBaseConnector.CloseConnection();
+            }
         }
     }
 }
