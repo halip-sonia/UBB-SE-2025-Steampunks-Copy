@@ -1,50 +1,50 @@
-using Microsoft.UI.Xaml.Controls;
-
 namespace Steampunks.Services
 {
+    using Microsoft.UI.Xaml.Controls;
+
     public class NavigationViewService : INavigationViewService
     {
-        private readonly INavigationService _navigationService;
-        private NavigationView _navigationView;
-
-        public INavigationService NavigationService => _navigationService;
-
-        public NavigationView NavigationView
-        {
-            get => _navigationView;
-            set
-            {
-                UnregisterEvents();
-                _navigationView = value;
-                RegisterEvents();
-            }
-        }
+        private readonly INavigationService navigationService;
+        private NavigationView? navigationView;
 
         public NavigationViewService(INavigationService navigationService)
         {
-            _navigationService = navigationService;
+            this.navigationService = navigationService;
+        }
+
+        public INavigationService NavigationService => this.navigationService;
+
+        public NavigationView? NavigationView
+        {
+            get => this.navigationView;
+            set
+            {
+                this.UnregisterEvents();
+                this.navigationView = value;
+                this.RegisterEvents();
+            }
         }
 
         public void Initialize(NavigationView navigationView)
         {
-            NavigationView = navigationView;
+            this.NavigationView = navigationView;
         }
 
         public void UnregisterEvents()
         {
-            if (_navigationView != null)
+            if (this.navigationView != null)
             {
-                _navigationView.ItemInvoked -= NavigationView_ItemInvoked;
-                _navigationView.BackRequested -= NavigationView_BackRequested;
+                this.navigationView.ItemInvoked -= this.NavigationView_ItemInvoked;
+                this.navigationView.BackRequested -= this.NavigationView_BackRequested;
             }
         }
 
         private void RegisterEvents()
         {
-            if (_navigationView != null)
+            if (this.navigationView != null)
             {
-                _navigationView.ItemInvoked += NavigationView_ItemInvoked;
-                _navigationView.BackRequested += NavigationView_BackRequested;
+                this.navigationView.ItemInvoked += this.NavigationView_ItemInvoked;
+                this.navigationView.BackRequested += this.NavigationView_BackRequested;
             }
         }
 
@@ -52,40 +52,20 @@ namespace Steampunks.Services
         {
             if (args.IsSettingsInvoked)
             {
-                _navigationService.NavigateTo("settings");
+                this.navigationService.NavigateTo("settings");
                 return;
             }
 
             var selectedItem = args.InvokedItemContainer as NavigationViewItem;
             if (selectedItem?.GetValue(NavigationHelper.NavigateToProperty) is string pageKey)
             {
-                _navigationService.NavigateTo(pageKey);
+                this.navigationService.NavigateTo(pageKey);
             }
         }
 
         private void NavigationView_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
         {
-            _navigationService.GoBack();
+            this.navigationService.GoBack();
         }
     }
-
-    public static class NavigationHelper
-    {
-        public static readonly Microsoft.UI.Xaml.DependencyProperty NavigateToProperty =
-            Microsoft.UI.Xaml.DependencyProperty.RegisterAttached(
-                "NavigateTo",
-                typeof(string),
-                typeof(NavigationHelper),
-                new Microsoft.UI.Xaml.PropertyMetadata(null));
-
-        public static string GetNavigateTo(Microsoft.UI.Xaml.DependencyObject obj)
-        {
-            return (string)obj.GetValue(NavigateToProperty);
-        }
-
-        public static void SetNavigateTo(Microsoft.UI.Xaml.DependencyObject obj, string value)
-        {
-            obj.SetValue(NavigateToProperty, value);
-        }
-    }
-} 
+}
