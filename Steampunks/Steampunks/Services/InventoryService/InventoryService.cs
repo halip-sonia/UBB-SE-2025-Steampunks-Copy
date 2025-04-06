@@ -6,8 +6,10 @@ namespace Steampunks.Services.InventoryService.InventoryService
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using Steampunks.Domain.Entities;
     using Steampunks.Repository.Inventory;
+    using Steampunks.Validators.InventoryValidator.InventoryValidator;
 
     /// <summary>
     /// Service that handles inventory-related operations.
@@ -15,100 +17,81 @@ namespace Steampunks.Services.InventoryService.InventoryService
     public class InventoryService : IInventoryService
     {
         private readonly IInventoryRepository inventoryRepository;
-        private readonly User user;
+        private readonly IInventoryValidator inventoryValidator;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InventoryService"/> class.
         /// </summary>
-        /// <param name="inventoryRepository"> Inventory repository. </param>
-        /// <param name="user"> User for which the inventory is managed. </param>
-        /// <exception cref="ArgumentNullException"> Thrown if either the repository or the user is null.</exception>
-        public InventoryService(InventoryRepository inventoryRepository, User user)
+        /// <param name="inventoryRepository">The inventory repository.</param>
+        /// <param name="inventoryValidator">The inventory validator.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either the repository or the validator is null.
+        /// </exception>
+        public InventoryService(IInventoryRepository inventoryRepository, IInventoryValidator inventoryValidator)
         {
-            if (inventoryRepository != null)
-            {
-                this.inventoryRepository = inventoryRepository;
-            }
-            else
-            {
-                throw new ArgumentNullException(nameof(inventoryRepository));
-            }
-
-            if (user != null)
-            {
-                this.user = user;
-            }
-            else
-            {
-                throw new ArgumentNullException(nameof(user));
-            }
+            this.inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
+            this.inventoryValidator = inventoryValidator ?? throw new ArgumentNullException(nameof(inventoryValidator));
         }
 
         /// <summary>
-        /// Retrieves a list of items from the user's inventory from the given game.
+        /// Retrieves a list of items from the user's inventory for the specified game.
         /// </summary>
-        /// <param name="game"> Game for which the items are retrieved. </param>
-        /// <returns> A list of items from the game, from the user's inventory. </returns>
-        /// <exception cref="ArgumentNullException"> Throws an exception when the game is null. </exception>
-        public List<Item> GetItemsFromInventory(Game game)
+        /// <param name="game">The game for which items are retrieved.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation. The task result contains a list of items.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="game"/> is null.
+        /// </exception>
+        public async Task<List<Item>> GetItemsFromInventoryAsync(Game game)
         {
-            if (game == null)
-            {
-                throw new ArgumentNullException(nameof(game));
-            }
-
-            return this.inventoryRepository.GetItemsFromInventory(game);
+            this.inventoryValidator.ValidateGame(game);
+            return await this.inventoryRepository.GetItemsFromInventoryAsync(game);
         }
 
         /// <summary>
-        /// Retrieves all the items of the user from the inventory.
+        /// Retrieves all items from the user's inventory.
         /// </summary>
-        /// <returns> A list of all items from the inventory. </returns>
-        public List<Item> GetAllItemsFromInventory()
+        /// <param name="user">The user whose inventory is to be retrieved.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation. The task result contains a list of all items.
+        /// </returns>
+        public async Task<List<Item>> GetAllItemsFromInventoryAsync(User user)
         {
-            return this.inventoryRepository.GetAllItemsFromInventory(this.user);
+            this.inventoryValidator.ValidateUser(user);
+            return await this.inventoryRepository.GetAllItemsFromInventoryAsync(user);
         }
 
         /// <summary>
-        /// Adds an item from a game to the inventory.
+        /// Adds an item to the inventory for the specified game and user.
         /// </summary>
-        /// <param name="game"> Game from which the item comes from. </param>
-        /// <param name="item"> Item to be added to the inventory. </param>
-        /// <exception cref="ArgumentNullException"> Throws an exception if either the game or item is null. </exception>
-        public void AddItemToInventory(Game game, Item item)
+        /// <param name="game">The game from which the item comes.</param>
+        /// <param name="item">The item to be added.</param>
+        /// <param name="user">The user adding the item.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="game"/>, <paramref name="item"/>, or <paramref name="user"/> is null.
+        /// </exception>
+        public async Task AddItemToInventoryAsync(Game game, Item item, User user)
         {
-            if (game == null)
-            {
-                throw new ArgumentNullException(nameof(game));
-            }
-
-            if (item == null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
-
-            this.inventoryRepository.AddItemToInventory(game, item, this.user);
+            this.inventoryValidator.ValidateInventoryOperation(game, item, user);
+            await this.inventoryRepository.AddItemToInventoryAsync(game, item, user);
         }
 
         /// <summary>
-        /// Removes an item from a game from the inventory.
+        /// Removes an item from the inventory for the specified game and user.
         /// </summary>
-        /// <param name="game"> Game from which the item comes from. </param>
-        /// <param name="item"> Item to be removed from the inventory. </param>
-        /// <exception cref="ArgumentNullException"> Throws an exception if either the game or item is null. </exception>
-        public void RemoveItemFromInventory(Game game, Item item)
+        /// <param name="game">The game from which the item comes.</param>
+        /// <param name="item">The item to be removed.</param>
+        /// <param name="user">The user whose inventory the item is being removed from.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="game"/>, <paramref name="item"/>, or <paramref name="user"/> is null.
+        /// </exception>
+        public async Task RemoveItemFromInventoryAsync(Game game, Item item, User user)
         {
-            if (game == null)
-            {
-                throw new ArgumentNullException(nameof(game));
-            }
-
-            if (item == null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
-
-            this.inventoryRepository.RemoveItemFromInventory(game, item, this.user);
+            this.inventoryValidator.ValidateInventoryOperation(game, item, user);
+            await this.inventoryRepository.RemoveItemFromInventoryAsync(game, item, user);
         }
     }
-} 
+}

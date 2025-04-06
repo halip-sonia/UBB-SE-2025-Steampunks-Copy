@@ -1,4 +1,8 @@
-﻿namespace Steampunks.Repository.Inventory
+﻿// <copyright file="IInventoryRepository.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+namespace Steampunks.Repository.Inventory
 {
     using System;
     using System.Collections.Generic;

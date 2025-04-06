@@ -1,3 +1,7 @@
+// <copyright file="InventoryRepository.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 namespace Steampunks.Repository.Inventory
 {
     using System;
@@ -31,7 +35,7 @@ namespace Steampunks.Repository.Inventory
         /// <param name="game">The game whose inventory items are to be retrieved.</param>
         /// <returns>A list of <see cref="Item"/> objects associated with the specified game.</returns>
         /// <exception cref="ArgumentNullException">Thrown if the <paramref name="game"/> is null.</exception>.
-        public async Task<List<Item>> GetInventoryItemsAsync(Game game)
+        public async Task<List<Item>> GetItemsFromInventoryAsync(Game game)
         {
             if (game == null)
             {
@@ -88,7 +92,7 @@ namespace Steampunks.Repository.Inventory
         /// <param name="user">The user whose inventory is to be retrieved.</param>
         /// <returns>A list of all <see cref="Item"/> objects belonging to the specified user.</returns>
         /// <exception cref="ArgumentNullException">Thrown if the <paramref name="user"/> is null.</exception>.
-        public async Task<List<Item>> GetAllInventoryItemsAsync(User user)
+        public async Task<List<Item>> GetAllItemsFromInventoryAsync(User user)
         {
             if (user == null)
             {
@@ -164,7 +168,7 @@ namespace Steampunks.Repository.Inventory
         /// Thrown if <paramref name="game"/>, <paramref name="item"/>, or <paramref name="user"/> is null.
         /// </exception>
         /// <returns>AddInventoryItemAsync returns <see cref="Task"/> representing the asynchronous operation.</returns>
-        public async Task AddInventoryItemAsync(Game game, Item item, User user)
+        public async Task AddItemToInventoryAsync(Game game, Item item, User user)
         {
             ArgumentNullException.ThrowIfNull(game);
 
@@ -203,7 +207,7 @@ namespace Steampunks.Repository.Inventory
         /// Thrown if <paramref name="game"/>, <paramref name="item"/>, or <paramref name="user"/> is null.
         /// </exception>
         /// <returns>RemoveInventoryItemAsync returns <see cref="Task"/> representing the asynchronous operation.</returns>
-        public async Task RemoveInventoryItemAsync(Game game, Item item, User user)
+        public async Task RemoveItemFromInventoryAsync(Game game, Item item, User user)
         {
             ArgumentNullException.ThrowIfNull(game);
 
