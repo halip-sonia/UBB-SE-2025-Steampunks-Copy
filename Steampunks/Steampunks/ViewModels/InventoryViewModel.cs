@@ -10,7 +10,7 @@ namespace Steampunks.ViewModels
     using Microsoft.Data.SqlClient;
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
-    using Steampunks.Services;
+    using Steampunks.Services.InventoryService.InventoryService;
 
     /// <summary>
     /// ViewModel for managing the inventory of items.

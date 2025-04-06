@@ -6,6 +6,7 @@ namespace Steampunks.DataLink
     using System.Threading.Tasks;
     using Microsoft.Data.SqlClient;
     using Steampunks.Domain.Entities;
+    using Steampunks.Utils;
 
     public class DatabaseConnector
     {
@@ -15,7 +16,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = @"Data Source=DESKTOP-J4L4KLR\SQLEXPRESS;Initial Catalog=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
+            this.connectionString = Configuration.CONNECTIONSTRINGDARIUS;
         }
 
         public SqlConnection GetConnection()
@@ -35,11 +36,16 @@ namespace Steampunks.DataLink
                 this.connection?.Open();
             }
         }
+
         public async Task OpenConnectionAsync()
         {
-            if (connection?.State != ConnectionState.Open)
+            if (connection == null)
             {
-                await connection?.OpenAsync();
+                connection = new SqlConnection(connectionString);
+            }
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync().ConfigureAwait(false);
             }
         }
 
