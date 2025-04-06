@@ -3,6 +3,7 @@ namespace Steampunks.DataLink
     using System;
     using System.Collections.Generic;
     using System.Data;
+    using System.Threading.Tasks;
     using Microsoft.Data.SqlClient;
     using Steampunks.Domain.Entities;
 
@@ -34,12 +35,27 @@ namespace Steampunks.DataLink
                 this.connection?.Open();
             }
         }
+        public async Task OpenConnectionAsync()
+        {
+            if (connection?.State != ConnectionState.Open)
+            {
+                await connection?.OpenAsync();
+            }
+        }
 
         public void CloseConnection()
         {
             if (this.connection?.State != ConnectionState.Closed)
             {
                 this.connection?.Close();
+            }
+        }
+
+        public async Task CloseConnectionAsync()
+        {
+            if (connection?.State != ConnectionState.Closed)
+            {
+                await Task.Run(() => connection.Close());
             }
         }
 
@@ -445,17 +461,22 @@ namespace Steampunks.DataLink
             }
         }
 
-        public List<Item> GetAllListings()
+        public async Task<List<Item>> GetAllListingsAsync()
         {
             var items = new List<Item>();
-            using (var command = new SqlCommand(@" SELECT i.ItemId, i.ItemName, i.Description, i.Price, i.IsListed, g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription FROM Items i JOIN Games g ON i.CorrespondingGameId = g.GameId WHERE i.IsListed = 1", this.GetConnection()))
+            using (var command = new SqlCommand(@"
+        SELECT i.ItemId, i.ItemName, i.Description, i.Price, i.IsListed,
+               g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
+        FROM Items i
+        JOIN Games g ON i.CorrespondingGameId = g.GameId
+        WHERE i.IsListed = 1", GetConnection()))
             {
                 try
                 {
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
+                    await OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
@@ -471,7 +492,6 @@ namespace Steampunks.DataLink
                                 reader.GetString(reader.GetOrdinal("Description")));
                             item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
                             item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-
                             // Set image path based on game and item ID
                             string imagePath = this.GetItemImagePath(item);
                             item.SetImagePath(imagePath);
@@ -483,43 +503,35 @@ namespace Steampunks.DataLink
                 }
                 finally
                 {
-                    this.CloseConnection();
+                    await CloseConnectionAsync();
                 }
             }
 
             return items;
         }
 
-        public List<Item> GetListingsByGame(Game game)
+        public async Task<List<Item>> GetListingsByGameAsync(Game game)
         {
             var items = new List<Item>();
             const string query = @"
-                SELECT 
-                    i.ItemId,
-                    i.ItemName,
-                    i.Price,
-                    i.Description,
-                    i.IsListed,
-                    g.GameId,
-                    g.Title as GameTitle,
-                    g.Genre,
-                    g.Description as GameDescription,
-                    g.Price as GamePrice,
-                    g.Status as GameStatus
-                FROM Items i
-                JOIN UserInventory ui ON i.ItemId = ui.ItemId
-                JOIN Games g ON ui.GameId = g.GameId
-                WHERE g.GameId = @GameId AND i.IsListed = 1";
+        SELECT 
+            i.ItemId, i.ItemName, i.Price, i.Description, i.IsListed,
+            g.GameId, g.Title as GameTitle, g.Genre, g.Description as GameDescription,
+            g.Price as GamePrice, g.Status as GameStatus
+        FROM Items i
+        JOIN UserInventory ui ON i.ItemId = ui.ItemId
+        JOIN Games g ON ui.GameId = g.GameId
+        WHERE g.GameId = @GameId AND i.IsListed = 1";
 
             try
             {
                 using (var command = new SqlCommand(query, this.GetConnection()))
                 {
                     command.Parameters.AddWithValue("@GameId", game.GameId);
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
+                    await OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             var gameObj = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
@@ -545,67 +557,79 @@ namespace Steampunks.DataLink
             }
             finally
             {
-                this.CloseConnection();
+                await CloseConnectionAsync();
             }
 
             return items;
         }
 
-        public void AddListing(Item item)
+
+        public async Task AddListingAsync(Item item)
         {
-            using (var command = new SqlCommand(@" UPDATE Items SET IsListed = 1, Price = @Price WHERE ItemId = @ItemId", this.GetConnection()))
+            using (var command = new SqlCommand(@"
+        UPDATE Items 
+        SET IsListed = 1, Price = @Price
+        WHERE ItemId = @ItemId", GetConnection()))
             {
                 command.Parameters.AddWithValue("@ItemId", item.ItemId);
                 command.Parameters.AddWithValue("@Price", item.Price);
 
                 try
                 {
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
+                    await OpenConnectionAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
                 finally
                 {
-                    this.CloseConnection();
+                    await CloseConnectionAsync();
                 }
             }
         }
 
-        public void RemoveListing(Item item)
+
+        public async Task RemoveListingAsync(Item item)
         {
-            using (var command = new SqlCommand(@" UPDATE Items SET IsListed = 0 WHERE ItemId = @ItemId", this.GetConnection()))
+            using (var command = new SqlCommand(@"
+        UPDATE Items 
+        SET IsListed = 0
+        WHERE ItemId = @ItemId", GetConnection()))
             {
                 command.Parameters.AddWithValue("@ItemId", item.ItemId);
 
                 try
                 {
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
+                    await OpenConnectionAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
                 finally
                 {
-                    this.CloseConnection();
+                    await CloseConnectionAsync();
                 }
             }
         }
 
-        public void UpdateListing(Item item)
+        public async Task UpdateListingAsync(Item item)
         {
-            using (var command = new SqlCommand(@" UPDATE Items SET Price = @Price WHERE ItemId = @ItemId", this.GetConnection()))
+            using (var command = new SqlCommand(@"
+        UPDATE Items 
+        SET Price = @Price
+        WHERE ItemId = @ItemId", GetConnection()))
             {
                 command.Parameters.AddWithValue("@ItemId", item.ItemId);
                 command.Parameters.AddWithValue("@Price", item.Price);
 
                 try
                 {
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
+                    await OpenConnectionAsync();
+                    await command.ExecuteNonQueryAsync();
                 }
                 finally
                 {
-                    this.CloseConnection();
+                    await CloseConnectionAsync();
                 }
             }
         }
+
 
         public List<Item> GetInventoryItems(Game game)
         {
@@ -758,28 +782,28 @@ namespace Steampunks.DataLink
             }
         }
 
-        public List<Game> GetGames()
+        public async Task<List<Game>> GetGamesAsync()
         {
             var games = new List<Game>();
             const string query = @"
-                SELECT 
-                    GameId,
-                    Title,
-                    Price,
-                    Genre,
-                    Description,
-                    Status
-                FROM Games
-                ORDER BY Title";
+        SELECT 
+            GameId,
+            Title,
+            Price,
+            Genre,
+            Description,
+            Status
+        FROM Games
+        ORDER BY Title";
 
             try
             {
                 using (var command = new SqlCommand(query, this.GetConnection()))
                 {
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
+                    await OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("Title")),
@@ -801,28 +825,28 @@ namespace Steampunks.DataLink
             return games;
         }
 
-        public Game? GetGameById(int gameId)
+        public async Task<Game> GetGameByIdAsync(int gameId)
         {
             const string query = @"
-                SELECT 
-                    GameId,
-                    Title,
-                    Price,
-                    Genre,
-                    Description,
-                    Status
-                FROM Games
-                WHERE GameId = @GameId";
+        SELECT 
+            GameId,
+            Title,
+            Price,
+            Genre,
+            Description,
+            Status
+        FROM Games
+        WHERE GameId = @GameId";
 
             try
             {
                 using (var command = new SqlCommand(query, this.GetConnection()))
                 {
                     command.Parameters.AddWithValue("@GameId", gameId);
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
+                    await OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
+                        if (await reader.ReadAsync())
                         {
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("Title")),
@@ -1765,3 +1789,4 @@ namespace Steampunks.DataLink
         }
     }
 }
+

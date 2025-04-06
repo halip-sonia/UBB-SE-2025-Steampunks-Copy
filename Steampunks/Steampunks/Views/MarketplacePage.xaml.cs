@@ -1,96 +1,111 @@
-using Microsoft.UI.Xaml.Controls;
-using Steampunks.ViewModels;
-using Steampunks.Services;
-using Steampunks.Domain.Entities;
-using Windows.Foundation;
-using System;
+// <copyright file="MarketplacePage.xaml.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.Views
 {
+    using System;
+    using Microsoft.UI.Xaml.Controls;
+    using Steampunks.Domain.Entities;
+    using Steampunks.Services;
+    using Steampunks.Services.MarketplaceService;
+    using Steampunks.ViewModels;
+    using Windows.Foundation;
+
+    /// <summary>
+    /// Represents the page that displays items available in the marketplace.
+    /// </summary>
     public sealed partial class MarketplacePage : Page
     {
+        private const string ErrorDialogTitle = "Error";
+        private const string SelectUserErrorMessage = "Please select a user before buying items.";
+        private const string OkButtonText = "OK";
+        private const string SuccessDialogTitle = "Success";
+        private const string ItemPurchasedMessage = "Item purchased successfully!";
+        private const string UnexpectedErrorMessage = "An unexpected error occurred. Please try again.";
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MarketplacePage"/> class.
+        /// </summary>
         public MarketplacePage()
         {
             this.InitializeComponent();
-            
-            // Create and set the ViewModel
-            var marketplaceService = new MarketplaceService(new Repository.Marketplace.MarketplaceRepository());
-            this.DataContext = new MarketplaceViewModel(marketplaceService);
+
+            var marketplaceServiceInstance = new MarketplaceService(new Repository.Marketplace.MarketplaceRepository());
+            this.DataContext = new MarketplaceViewModel(marketplaceServiceInstance);
         }
 
-        private void GridView_ItemClick(object sender, ItemClickEventArgs e)
+        /// <summary>
+        /// Handles item click events in the GridView, opening a dialog and processing item purchase.
+        /// </summary>
+        /// <param name="sender">The sender of the event.</param>
+        /// <param name="eventArgs">The item click event arguments.</param>
+        private void OnMarketplaceGridViewItemClicked(object sender, ItemClickEventArgs eventArgs)
         {
-            if (e.ClickedItem is Item selectedItem)
+            if (eventArgs.ClickedItem is Item clickedMarketplaceItem)
             {
-                var viewModel = (MarketplaceViewModel)DataContext;
-                viewModel.SelectedItem = selectedItem;
+                var marketplaceViewModel = (MarketplaceViewModel)this.DataContext;
+                marketplaceViewModel.SelectedItem = clickedMarketplaceItem;
 
-                // Set XamlRoot for the item details dialog
-                ItemDetailsDialog.XamlRoot = this.XamlRoot;
+                this.ItemDetailsDialog.XamlRoot = this.XamlRoot;
 
-                ItemDetailsDialog.ShowAsync().Completed = async (asyncInfo, status) =>
+                this.ItemDetailsDialog.ShowAsync().Completed = async (asyncOperation, asyncStatus) =>
                 {
-                    var result = (ContentDialogResult)asyncInfo.GetResults();
-                    if (result == ContentDialogResult.Secondary)
+                    var dialogResult = (ContentDialogResult)asyncOperation.GetResults();
+                    if (dialogResult == ContentDialogResult.Secondary)
                     {
                         try
                         {
-                            // Check if a user is selected
-                            if (viewModel.CurrentUser == null)
+                            if (marketplaceViewModel.CurrentUser == null)
                             {
-                                var errorDialog = new ContentDialog
+                                var missingUserDialog = new ContentDialog
                                 {
-                                    Title = "Error",
-                                    Content = "Please select a user before buying items.",
-                                    CloseButtonText = "OK",
-                                    XamlRoot = this.XamlRoot
+                                    Title = ErrorDialogTitle,
+                                    Content = SelectUserErrorMessage,
+                                    CloseButtonText = OkButtonText,
+                                    XamlRoot = this.XamlRoot,
                                 };
-                                await errorDialog.ShowAsync();
+                                await missingUserDialog.ShowAsync();
                                 return;
                             }
 
-                            // Buy button was clicked
-                            bool success = await viewModel.BuyItemAsync();
-                            if (success)
+                            bool purchaseSuccess = await marketplaceViewModel.BuyItemAsync();
+                            if (purchaseSuccess)
                             {
-                                // Show success message
-                                var successDialog = new ContentDialog
+                                var purchaseSuccessDialog = new ContentDialog
                                 {
-                                    Title = "Success",
-                                    Content = "Item purchased successfully!",
-                                    CloseButtonText = "OK",
-                                    XamlRoot = this.XamlRoot
+                                    Title = SuccessDialogTitle,
+                                    Content = ItemPurchasedMessage,
+                                    CloseButtonText = OkButtonText,
+                                    XamlRoot = this.XamlRoot,
                                 };
-                                await successDialog.ShowAsync();
+                                await purchaseSuccessDialog.ShowAsync();
                             }
                         }
-                        catch (InvalidOperationException ex)
+                        catch (InvalidOperationException operationException)
                         {
-                            // Show specific error message
-                            var errorDialog = new ContentDialog
+                            var operationErrorDialog = new ContentDialog
                             {
-                                Title = "Error",
-                                Content = ex.Message,
-                                CloseButtonText = "OK",
-                                XamlRoot = this.XamlRoot
+                                Title = ErrorDialogTitle,
+                                Content = operationException.Message,
+                                CloseButtonText = OkButtonText,
+                                XamlRoot = this.XamlRoot,
                             };
-                            await errorDialog.ShowAsync();
+                            await operationErrorDialog.ShowAsync();
                         }
-                        catch (Exception ex)
+                        catch (Exception generalException)
                         {
-                            // Show generic error message
-                            var errorDialog = new ContentDialog
+                            var generalErrorDialog = new ContentDialog
                             {
-                                Title = "Error",
-                                Content = "An unexpected error occurred. Please try again.",
-                                CloseButtonText = "OK",
-                                XamlRoot = this.XamlRoot
+                                Title = ErrorDialogTitle,
+                                Content = UnexpectedErrorMessage,
+                                CloseButtonText = OkButtonText,
+                                XamlRoot = this.XamlRoot,
                             };
-                            await errorDialog.ShowAsync();
-                            
-                            // Log the error
-                            System.Diagnostics.Debug.WriteLine($"Error in GridView_ItemClick: {ex.Message}");
-                            System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                            await generalErrorDialog.ShowAsync();
+
+                            System.Diagnostics.Debug.WriteLine($"Error in OnMarketplaceGridViewItemClicked: {generalException.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Stack trace: {generalException.StackTrace}");
                         }
                     }
                 };

@@ -79,3 +79,5 @@ orleans.codegen.cs
 # JetBrains Rider
 .idea/
 *.sln.iml 
+Steampunks/DatabaseStuff.ldf
+Steampunks/DatabaseStuff.mdf

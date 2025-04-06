@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30330.147
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156 d17.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steampunks", "Steampunks\Steampunks.csproj", "{EA54480F-DC72-4826-8B7E-04A351038B92}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steampunks_Tests", "Steampunks_Tests\Steampunks_Tests.csproj", "{833FA3AF-9EB4-46EB-BB81-9BE26A296577}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,18 @@ Global
 		{EA54480F-DC72-4826-8B7E-04A351038B92}.Release|x86.ActiveCfg = Release|x86
 		{EA54480F-DC72-4826-8B7E-04A351038B92}.Release|x86.Build.0 = Release|x86
 		{EA54480F-DC72-4826-8B7E-04A351038B92}.Release|x86.Deploy.0 = Release|x86
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Debug|x64.Build.0 = Debug|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Debug|x86.Build.0 = Debug|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Release|ARM64.Build.0 = Release|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Release|x64.ActiveCfg = Release|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Release|x64.Build.0 = Release|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Release|x86.ActiveCfg = Release|Any CPU
+		{833FA3AF-9EB4-46EB-BB81-9BE26A296577}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
