@@ -5,6 +5,7 @@
 namespace Steampunks.Services.MarketplaceService
 {
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using Steampunks.Domain.Entities;
 
     /// <summary>
@@ -17,7 +18,8 @@ namespace Steampunks.Services.MarketplaceService
         /// </summary>
         /// <param name="game"> Game from which the item being added is. </param>
         /// <param name="item"> Item for which the listing is added. </param>
-        void AddListing(Game game, Item item);
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
+        Task AddListingAsync(Game game, Item item);
 
         /// <summary>
         /// Handles the purchase of an item by removing former ownership, adding the item to the new owner's inventory,
@@ -25,19 +27,19 @@ namespace Steampunks.Services.MarketplaceService
         /// </summary>
         /// <param name="item"> Item to be purchased. </param>
         /// <returns> True upon successful purchase. </returns>
-        bool BuyItem(Item item);
+        Task<bool> BuyItemAsync(Item item);
 
         /// <summary>
         /// Retrieves all the listings in the marketplace.
         /// </summary>
         /// <returns> A list of Items (marketplace listings). </returns>
-        List<Item> GetAllListings();
+        Task<List<Item>> GetAllListingsAsync();
 
         /// <summary>
         /// Retrieve all users from the database.
         /// </summary>
         /// <returns> A list of all Users. </returns>
-        List<User> GetAllUsers();
+        Task<List<User>> GetAllUsersAsync();
 
         /// <summary>
         /// Returns the current user.
@@ -50,14 +52,15 @@ namespace Steampunks.Services.MarketplaceService
         /// </summary>
         /// <param name="game"> Game for which the listing is retrieved. </param>
         /// <returns> A list of Items (marketplace listings). </returns>
-        List<Item> GetListingsByGame(Game game);
+        Task<List<Item>> GetListingsByGameAsync(Game game);
 
         /// <summary>
         /// Remove listing (an item from a game).
         /// </summary>
         /// <param name="game"> Game from which the item to be listed is. </param>
         /// <param name="item"> Item listing to be removed. </param>
-        void RemoveListing(Game game, Item item);
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
+        Task RemoveListingAsync(Game game, Item item);
 
         /// <summary>
         /// Sets the current user to another.
@@ -70,6 +73,7 @@ namespace Steampunks.Services.MarketplaceService
         /// </summary>
         /// <param name="game"> Game from which the item to be listed is. </param>
         /// <param name="item"> Item listing to be updated. </param>
-        void UpdateListing(Game game, Item item);
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
+        Task UpdateListingAsync(Game game, Item item);
     }
 }

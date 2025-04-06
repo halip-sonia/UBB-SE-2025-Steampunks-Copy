@@ -1,9 +1,11 @@
-﻿namespace Steampunks.Repository.Marketplace
+﻿// <copyright file="IMarketplaceRepository.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+namespace Steampunks.Repository.Marketplace
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
     using System.Threading.Tasks;
     using Steampunks.Domain.Entities;
 
@@ -13,6 +15,15 @@
     /// </summary>
     public interface IMarketplaceRepository
     {
+        /// <summary>
+        /// Handles the purchase of an item by removing former ownership, adding the item to the new owner's inventory,
+        /// and marking the item as unlisted.
+        /// </summary>
+        /// <param name="item"> Item to be purchased. </param>
+        /// <param name="currentUser"> User that makes the item purchase. </param>
+        /// <returns> True upon successful completion. </returns>
+        Task<bool> BuyItemAsync(Item item, User currentUser);
+
         /// <summary>
         /// Retrieves all listed items available for sale from the database.
         /// </summary>
@@ -41,7 +52,7 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
-
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
         Task MakeItemListableAsync(Game game, Item item);
 
         /// <summary>
@@ -52,8 +63,8 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
         Task MakeItemNotListableAsync(Game game, Item item);
-
 
         /// <summary>
         /// Updates the price of an item in the specified game.
@@ -63,6 +74,7 @@
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="game"/> or <paramref name="item"/> is null.
         /// </exception>
+        /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
         Task UpdateItemPriceAsync(Game game, Item item);
     }
 }
