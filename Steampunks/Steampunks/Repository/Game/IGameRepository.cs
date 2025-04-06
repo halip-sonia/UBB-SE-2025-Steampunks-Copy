@@ -36,5 +36,32 @@
         /// <param name="game">The game object to update.</param>
         /// <returns>True if update succeeded; otherwise, false.</returns>
         Task<bool> UpdateGameAsync(Game game);
+
+        /// <summary>
+        /// Asynchronously retrieves a list of all games from the database, ordered by title.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation. 
+        /// The task result contains a list of <see cref="Game"/> objects.</returns>
+        Task<List<Game>> GetGamesFromDatabaseAsync();
+
+        /// <summary>
+        /// Asynchronously retrieves a specific game from the database based on its unique identifier.
+        /// </summary>
+        /// <param name="gameId">The ID of the game to retrieve.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. 
+        /// The task result contains a <see cref="Game"/> object if found; otherwise, <c>null</c>.
+        /// </returns>
+        Task<Game> GetGameByIdFromDatabaseAsync(int gameId);
+
+        /// <summary>
+        /// Asynchronously updates the details of an existing game in the database, excluding the status field.
+        /// </summary>
+        /// <param name="game">The <see cref="Game"/> object containing updated information.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. 
+        /// The task result contains <c>true</c> if the update was successful; otherwise, <c>false</c>.
+        /// </returns>
+        Task<bool> UpdateGameFromDatabaseAsync(Game game);
     }
 }

@@ -42,7 +42,7 @@ namespace Steampunks.Repository.GameRepo
         /// </returns>
         public async Task<List<Game>> GetGamesAsync()
         {
-            return await this.GetGamesAsync1();
+            return await this.GetGamesFromDatabaseAsync();
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Steampunks.Repository.GameRepo
         /// </returns>
         public async Task<Game> GetGameByIdAsync(int gameId) 
         {
-            return await this.GetGameByIdAsync1(gameId);
+            return await this.GetGameByIdFromDatabaseAsync(gameId);
         }
 
         /// <summary>
@@ -64,10 +64,15 @@ namespace Steampunks.Repository.GameRepo
         /// <returns>True if update succeeded; otherwise, false.</returns>
         public async Task<bool> UpdateGameAsync(Game game)
         {
-            return await this.UpdateGameAsync1(game);
+            return await this.UpdateGameFromDatabaseAsync(game);
         }
 
-        public async Task<List<Game>> GetGamesAsync1()
+        /// <summary>
+        /// Asynchronously retrieves a list of all games from the database, ordered by title.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation. 
+        /// The task result contains a list of <see cref="Game"/> objects.</returns>
+        public async Task<List<Game>> GetGamesFromDatabaseAsync()
         {
             var games = new List<Game>();
             const string query = @"
@@ -111,7 +116,15 @@ namespace Steampunks.Repository.GameRepo
             return games;
         }
 
-        public async Task<Game> GetGameByIdAsync1(int gameId)
+        /// <summary>
+        /// Asynchronously retrieves a specific game from the database based on its unique identifier.
+        /// </summary>
+        /// <param name="gameId">The ID of the game to retrieve.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. 
+        /// The task result contains a <see cref="Game"/> object if found; otherwise, <c>null</c>.
+        /// </returns>
+        public async Task<Game> GetGameByIdFromDatabaseAsync(int gameId)
         {
             const string query = @"
         SELECT 
@@ -155,7 +168,15 @@ namespace Steampunks.Repository.GameRepo
             return null;
         }
 
-        public async Task<bool> UpdateGameAsync1(Game game)
+        /// <summary>
+        /// Asynchronously updates the details of an existing game in the database, excluding the status field.
+        /// </summary>
+        /// <param name="game">The <see cref="Game"/> object containing updated information.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. 
+        /// The task result contains <c>true</c> if the update was successful; otherwise, <c>false</c>.
+        /// </returns>
+        public async Task<bool> UpdateGameFromDatabaseAsync(Game game)
         {
             const string query = @"
         UPDATE Games
