@@ -1,436 +1,655 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Navigation;
-using Steampunks.Domain.Entities;
-using Steampunks.DataLink;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Collections.ObjectModel;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI;
-using Steampunks.ViewModels;
-using Steampunks.Services;
+// <copyright file="TradingPage.xaml.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.Views
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Collections.ObjectModel;
+    using System.Linq;
+    using Microsoft.UI;
+    using Microsoft.UI.Xaml;
+    using Microsoft.UI.Xaml.Controls;
+    using Microsoft.UI.Xaml.Media;
+    using Microsoft.UI.Xaml.Navigation;
+    using Steampunks.DataLink;
+    using Steampunks.Domain.Entities;
+    using Steampunks.Repository.GameRepo;
+    using Steampunks.Services;
+    using Steampunks.ViewModels;
+
+    /// <summary>
+    /// Represents the page in the application where users can initiate and manage item trades with other users.
+    /// Provides functionality for selecting trade partners, offering items, and confirming trades.
+    /// </summary>
+    /// <exception cref="Exception">
+    /// May throw exceptions indirectly from service calls during user interactions or data loading.
+    /// </exception>
     public sealed partial class TradingPage : Page
     {
-        private readonly DatabaseConnector _dbConnector;
-        private readonly TradeService _tradeService;
-        private readonly UserService _userService;
-        private readonly GameService _gameService;
-        private TradeViewModel ViewModel { get; set; }
-        private ObservableCollection<ItemTrade> ActiveTrades { get; set; }
-        private ObservableCollection<TradeHistoryViewModel> TradeHistory { get; set; }
-        private User _currentUser;
-        private User _recipientUser;
-        private ObservableCollection<Item> _sourceItems;
-        private ObservableCollection<Item> _destinationItems;
-        private ObservableCollection<Item> _selectedSourceItems;
-        private ObservableCollection<Item> _selectedDestinationItems;
+        // Constants (avoid magic strings)
+        private const string DisplayMemberUsername = "Username";
+        private const string LoadUsersErrorMessage = "Error loading users. Please try again later.";
+        private const string LoadUsersDebugMessagePrefix = "Error loading users: ";
+        private const string LoadUserItemsErrorMessage = "Error loading your items. Please try again later.";
+        private const string LoadUserItemsDebugMessagePrefix = "Error loading user items: ";
+        private const string LoadRecipientItemsErrorMessage = "Error loading recipient's items. Please try again later.";
+        private const string LoadRecipientItemsDebugMessagePrefix = "Error loading recipient items: ";
+        private const string GameDisplayMemberPath = "Title";
+        private const string LoadGamesErrorPrefix = "Error loading games: ";
+        private const string LoadGamesInnerErrorPrefix = "Inner error: ";
+        private const string LoadGamesSuccessMessagePrefix = "Successfully loaded ";
+        private const string LoadActiveTradesErrorMessage = "Error loading active trades. Please try again later.";
+        private const string LoadActiveTradesDebugMessagePrefix = "Error loading active trades: ";
+        private const string CurrentUserNullMessage = "Current user is null. Cannot load active trades.";
+        private const string LoadTradeHistoryErrorMessage = "Error loading trade history. Please try again later.";
+        private const string LoadTradeHistoryDebugMessagePrefix = "Error loading trade history: ";
+        private const string CurrentUserNullMessageForHistory = "Current user is null. Cannot load trade history.";
+        private const string TradeStatusCompleted = "Completed";
+        private const string TradeDateTimeDisplayFormat = "MMM dd, yyyy HH:mm";
+        private const string ErrorSelectCurrentUser = "Please select your user.";
+        private const string ErrorSelectRecipientUser = "Please select a user to trade with.";
+        private const string ErrorSelectItems = "Please select at least one item to trade.";
+        private const string ErrorMissingDescription = "Please enter a trade description.";
+        private const string ErrorUnableToDetermineGame = "Unable to determine the game for the trade.";
+        private const string ErrorCreatingTradePrefix = "An error occurred while creating the trade offer: ";
+        private const string SuccessTradeCreated = "Trade offer created successfully!";
+        private const string DebugTradeCreationErrorPrefix = "Error creating item trade: ";
+        private const string DebugInnerExceptionPrefix = "Inner exception: ";
+        private const string AcceptTradeErrorPrefix = "Error accepting trade: ";
+        private const string DeclineTradeErrorPrefix = "Error declining trade: ";
+        private const int NoSelectionIndex = -1;
 
+        private readonly DatabaseConnector databaseConnector;
+        private readonly TradeService tradeService;
+        private readonly UserService userService;
+        private readonly GameService gameService;
+
+        private User? currentUser;
+        private User? recipientUser;
+        private ObservableCollection<Item> itemsOfferedByCurrentUser;
+        private ObservableCollection<Item> itemsOfferedByRecipientUser;
+        private ObservableCollection<Item> selectedItemsFromCurrentUserInventory;
+        private ObservableCollection<Item> selectedItemsFromRecipientUserInventory;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TradingPage"/> class and sets up dependencies.
+        /// </summary>
         public TradingPage()
         {
-            InitializeComponent();
-            _dbConnector = new DatabaseConnector();
-            _tradeService = new TradeService(_dbConnector);
-            _userService = new UserService(_dbConnector);
-            _gameService = new GameService(_dbConnector);
-            ViewModel = new TradeViewModel(_tradeService, _userService, _gameService, _dbConnector);
-            ActiveTrades = new ObservableCollection<ItemTrade>();
-            TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
-            _sourceItems = new ObservableCollection<Item>();
-            _destinationItems = new ObservableCollection<Item>();
-            _selectedSourceItems = new ObservableCollection<Item>();
-            _selectedDestinationItems = new ObservableCollection<Item>();
-            
-            // Set up ListViews
-            SourceItemsListView.ItemsSource = _sourceItems;
-            DestinationItemsListView.ItemsSource = _destinationItems;
-            SelectedSourceItemsListView.ItemsSource = _selectedSourceItems;
-            SelectedDestinationItemsListView.ItemsSource = _selectedDestinationItems;
-            
-            LoadUsers();
-            LoadGames();
-            LoadActiveTrades();
-            LoadTradeHistory();
+            this.InitializeComponent();
+            this.databaseConnector = new DatabaseConnector();
+            this.tradeService = new TradeService(this.databaseConnector);
+            this.userService = new UserService(this.databaseConnector);
+            this.gameService = new GameService(new GameRepository());
+            this.ViewModel = new TradeViewModel(this.tradeService, this.userService, this.gameService, this.databaseConnector);
+            this.ActiveTrades = new ObservableCollection<ItemTrade>();
+            this.TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
+            this.itemsOfferedByCurrentUser = new ObservableCollection<Item>();
+            this.itemsOfferedByRecipientUser = new ObservableCollection<Item>();
+            this.selectedItemsFromCurrentUserInventory = new ObservableCollection<Item>();
+            this.selectedItemsFromRecipientUserInventory = new ObservableCollection<Item>();
+
+            this.SourceItemsListView.ItemsSource = this.itemsOfferedByCurrentUser;
+            this.DestinationItemsListView.ItemsSource = this.itemsOfferedByRecipientUser;
+            this.SelectedSourceItemsListView.ItemsSource = this.selectedItemsFromCurrentUserInventory;
+            this.SelectedDestinationItemsListView.ItemsSource = this.selectedItemsFromRecipientUserInventory;
+
+            this.LoadUsers();
+            this.LoadGames();
+            this.LoadActiveTrades();
+            this.LoadTradeHistory();
         }
 
+        private TradeViewModel ViewModel { get; set; }
+
+        private ObservableCollection<ItemTrade> ActiveTrades { get; set; }
+
+        private ObservableCollection<TradeHistoryViewModel> TradeHistory { get; set; }
+
+        /// <summary>
+        /// Loads all users from the database and binds them to the UserComboBox.
+        /// Selects the current logged-in user and refreshes both the active trades and trade history.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if the user list or current user could not be loaded from the database.
+        /// </exception>
         private void LoadUsers()
         {
             try
             {
-                var users = _dbConnector.GetAllUsers();
-                UserComboBox.ItemsSource = users;
-                UserComboBox.DisplayMemberPath = "Username";
+                var allUsers = this.databaseConnector.GetAllUsers();
+                this.UserComboBox.ItemsSource = allUsers;
+                this.UserComboBox.DisplayMemberPath = DisplayMemberUsername;
 
-                // Set the current user as the selected user
-                _currentUser = _dbConnector.GetCurrentUser();
-                UserComboBox.SelectedItem = users.FirstOrDefault(u => u.UserId == _currentUser.UserId);
+                var loggedInUser = this.databaseConnector.GetCurrentUser();
+                this.currentUser = loggedInUser;
 
-                LoadActiveTrades();
-                LoadTradeHistory();
+                if (loggedInUser != null)
+                {
+                    this.UserComboBox.SelectedItem = allUsers.FirstOrDefault(user => user.UserId == loggedInUser.UserId);
+                }
+
+                this.LoadActiveTrades();
+                this.LoadTradeHistory();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = "Error loading users. Please try again later.";
-                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+                this.ErrorMessage.Text = LoadUsersErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"{LoadUsersDebugMessagePrefix}{exception.Message}");
             }
         }
 
-        private void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// Handles the selection change event in the UserComboBox.
+        /// Updates the recipient user list (excluding the current user) and loads the selected user's items.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// May throw an exception if the user list cannot be retrieved from the database.
+        /// </exception>
+        private void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
         {
-            _currentUser = UserComboBox.SelectedItem as User;
-            if (_currentUser != null)
+            this.currentUser = this.UserComboBox.SelectedItem as User;
+            if (this.currentUser != null)
             {
-                // Update available users for trading (exclude current user)
-                var users = _dbConnector.GetAllUsers().Where(u => u.UserId != _currentUser.UserId).ToList();
-                RecipientComboBox.ItemsSource = users;
-                RecipientComboBox.DisplayMemberPath = "Username";
+                var availableTradePartners = this.databaseConnector.GetAllUsers().Where(user => user.UserId != this.currentUser.UserId).ToList();
+                this.RecipientComboBox.ItemsSource = availableTradePartners;
+                this.RecipientComboBox.DisplayMemberPath = DisplayMemberUsername;
 
-                // Load current user's items
-                LoadUserItems();
+                this.LoadUserItems();
             }
         }
 
-        private void RecipientComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// Handles the selection change event in the RecipientComboBox.
+        /// When a recipient is selected, their inventory is loaded and displayed.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// May throw an exception if recipient data cannot be retrieved from the database.
+        /// </exception>
+        private void RecipientComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
         {
-            _recipientUser = RecipientComboBox.SelectedItem as User;
-            if (_recipientUser != null)
+            this.recipientUser = this.RecipientComboBox.SelectedItem as User;
+            if (this.recipientUser != null)
             {
-                // Load recipient's items
-                LoadRecipientItems();
+                this.LoadRecipientItems();
             }
         }
 
+        /// <summary>
+        /// Loads the items belonging to the current user.
+        /// If a game is selected, only items related to that game will be included.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if user items could not be retrieved or filtered.
+        /// </exception>
         private void LoadUserItems()
         {
             try
             {
-                _sourceItems.Clear();
-                _selectedSourceItems.Clear();
+                this.itemsOfferedByCurrentUser.Clear();
+                this.selectedItemsFromCurrentUserInventory.Clear();
 
-                if (_currentUser != null)
+                if (this.currentUser != null)
                 {
-                    var items = _dbConnector.GetUserItems(_currentUser.UserId);
-                    var selectedGame = GameComboBox.SelectedItem as Game;
+                    var userItems = this.databaseConnector.GetUserItems(this.currentUser.UserId);
+                    var selectedGame = this.GameComboBox.SelectedItem as Game;
 
                     if (selectedGame != null)
                     {
-                        items = items.Where(i => i.GetCorrespondingGame().GameId == selectedGame.GameId).ToList();
+                        userItems = userItems.Where(item => item.GetCorrespondingGame().GameId == selectedGame.GameId).ToList();
                     }
 
-                    foreach (var item in items)
+                    foreach (var item in userItems)
                     {
-                        _sourceItems.Add(item);
+                        this.itemsOfferedByCurrentUser.Add(item);
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = "Error loading your items. Please try again later.";
-                System.Diagnostics.Debug.WriteLine($"Error loading user items: {ex.Message}");
+                this.ErrorMessage.Text = LoadUserItemsErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"{LoadUserItemsDebugMessagePrefix}{exception.Message}");
             }
         }
 
+        /// <summary>
+        /// Loads the items belonging to the selected recipient user.
+        /// If a game is selected, only items related to that game will be included.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if recipient items could not be retrieved or filtered.
+        /// </exception>
         private void LoadRecipientItems()
         {
             try
             {
-                _destinationItems.Clear();
-                _selectedDestinationItems.Clear();
+                this.itemsOfferedByRecipientUser.Clear();
+                this.selectedItemsFromRecipientUserInventory.Clear();
 
-                if (_recipientUser != null)
+                if (this.recipientUser != null)
                 {
-                    var items = _dbConnector.GetUserItems(_recipientUser.UserId);
-                    var selectedGame = GameComboBox.SelectedItem as Game;
+                    var recipientItems = this.databaseConnector.GetUserItems(this.recipientUser.UserId);
+                    var selectedGame = this.GameComboBox.SelectedItem as Game;
 
                     if (selectedGame != null)
                     {
-                        items = items.Where(i => i.GetCorrespondingGame().GameId == selectedGame.GameId).ToList();
+                        recipientItems = recipientItems.Where(item => item.GetCorrespondingGame().GameId == selectedGame.GameId).ToList();
                     }
 
-                    foreach (var item in items)
+                    foreach (var item in recipientItems)
                     {
-                        _destinationItems.Add(item);
+                        this.itemsOfferedByRecipientUser.Add(item);
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = "Error loading recipient's items. Please try again later.";
-                System.Diagnostics.Debug.WriteLine($"Error loading recipient items: {ex.Message}");
+                this.ErrorMessage.Text = LoadRecipientItemsErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"{LoadRecipientItemsDebugMessagePrefix}{exception.Message}");
             }
         }
 
+        /// <summary>
+        /// Loads all available games from the database and binds them to the GameComboBox.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if the list of games could not be retrieved from the database.
+        /// </exception>
         private void LoadGames()
         {
             try
             {
-                var games = _dbConnector.GetAllGames();
-                GameComboBox.ItemsSource = games;
-                GameComboBox.DisplayMemberPath = "Title";
-                System.Diagnostics.Debug.WriteLine($"Successfully loaded {games.Count} games");
+                var allGames = this.databaseConnector.GetAllGames();
+                this.GameComboBox.ItemsSource = allGames;
+                this.GameComboBox.DisplayMemberPath = GameDisplayMemberPath;
+
+                System.Diagnostics.Debug.WriteLine($"{LoadGamesSuccessMessagePrefix}{allGames.Count} games");
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                var errorMessage = $"Error loading games: {ex.Message}";
-                if (ex.InnerException != null)
+                var errorMessage = $"{LoadGamesErrorPrefix}{exception.Message}";
+
+                if (exception.InnerException != null)
                 {
-                    errorMessage += $"\nInner error: {ex.InnerException.Message}";
+                    errorMessage += $"\n{LoadGamesInnerErrorPrefix}{exception.InnerException.Message}";
                 }
-                ErrorMessage.Text = errorMessage;
+
+                this.ErrorMessage.Text = errorMessage;
                 System.Diagnostics.Debug.WriteLine(errorMessage);
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {exception.StackTrace}");
             }
         }
 
+        /// <summary>
+        /// Loads all active item trades for the current user and updates the ActiveTrades collection.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if active trades could not be retrieved from the database.
+        /// </exception>
         private void LoadActiveTrades()
         {
+            if (this.currentUser == null)
+            {
+                System.Diagnostics.Debug.WriteLine(CurrentUserNullMessage);
+                return;
+            }
+
             try
             {
-                var trades = _dbConnector.GetActiveItemTrades(_currentUser.UserId);
-                ActiveTrades.Clear();
+                var activeTrades = this.databaseConnector.GetActiveItemTrades(this.currentUser.UserId);
+                this.ActiveTrades.Clear();
 
-                foreach (var trade in trades)
+                foreach (var trade in activeTrades)
                 {
-                    ActiveTrades.Add(trade);
+                    this.ActiveTrades.Add(trade);
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = "Error loading active trades. Please try again later.";
-                System.Diagnostics.Debug.WriteLine($"Error loading active trades: {ex.Message}");
+                this.ErrorMessage.Text = LoadActiveTradesErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"{LoadActiveTradesDebugMessagePrefix}{exception.Message}");
             }
         }
 
+        /// <summary>
+        /// Loads the trade history for the current user and populates the TradeHistory collection
+        /// with detailed information including partner name, items, status, and colors.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if trade history data could not be retrieved or processed.
+        /// </exception>
         private void LoadTradeHistory()
         {
+            if (this.currentUser == null)
+            {
+                System.Diagnostics.Debug.WriteLine(CurrentUserNullMessageForHistory);
+                return;
+            }
+
             try
             {
-                var trades = _dbConnector.GetItemTradeHistory(_currentUser.UserId);
-                TradeHistory.Clear();
+                var tradeHistoryEntries = this.databaseConnector.GetItemTradeHistory(this.currentUser.UserId);
+                this.TradeHistory.Clear();
 
-                foreach (var trade in trades)
+                foreach (var trade in tradeHistoryEntries)
                 {
-                    var isSourceUser = trade.SourceUser.UserId == _currentUser.UserId;
-                    var partner = isSourceUser ? trade.DestinationUser : trade.SourceUser;
-                    
-                    var statusColor = trade.TradeStatus == "Completed" 
-                        ? new SolidColorBrush(Colors.Green) 
+                    bool isCurrentUserSource = trade.SourceUser.UserId == this.currentUser.UserId;
+                    User tradePartner = isCurrentUserSource ? trade.DestinationUser : trade.SourceUser;
+
+                    var statusColor = trade.TradeStatus == TradeStatusCompleted
+                        ? new SolidColorBrush(Colors.Green)
                         : new SolidColorBrush(Colors.Red);
 
-                    TradeHistory.Add(new TradeHistoryViewModel
+                    this.TradeHistory.Add(new TradeHistoryViewModel
                     {
                         TradeId = trade.TradeId,
-                        PartnerName = partner.Username,
+                        PartnerName = tradePartner.Username,
                         TradeItems = trade.SourceUserItems.Concat(trade.DestinationUserItems).ToList(),
                         TradeDescription = trade.TradeDescription,
                         TradeStatus = trade.TradeStatus,
-                        TradeDate = trade.TradeDate.ToString("MMM dd, yyyy HH:mm"),
+                        TradeDate = trade.TradeDate.ToString(TradeDateTimeDisplayFormat),
                         StatusColor = statusColor,
-                        IsSourceUser = isSourceUser
+                        IsSourceUser = isCurrentUserSource,
                     });
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = "Error loading trade history. Please try again later.";
-                System.Diagnostics.Debug.WriteLine($"Error loading trade history: {ex.Message}");
+                this.ErrorMessage.Text = LoadTradeHistoryErrorMessage;
+                System.Diagnostics.Debug.WriteLine($"{LoadTradeHistoryDebugMessagePrefix}{exception.Message}");
             }
         }
 
-        private void GameComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// Handles the selection change event for the GameComboBox.
+        /// Reloads the items for both the current user and the recipient user based on the selected game.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// May be thrown if loading items for the users fails due to a database or processing error.
+        /// </exception>
+        private void GameComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
         {
-            LoadUserItems();
-            LoadRecipientItems();
+            this.LoadUserItems();
+            this.LoadRecipientItems();
         }
 
-        private void AddSourceItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event for adding items from the source list to the selected items inventory of the current user.
+        /// Moves selected items from the available list to the current user's selected inventory.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// May be thrown if the selected items cannot be cast or modified due to runtime errors.
+        /// </exception>
+        private void AddSourceItem_Click(object sender, RoutedEventArgs eventArgs)
         {
-            var selectedItems = SourceItemsListView.SelectedItems.Cast<Item>().ToList();
+            var selectedItems = this.SourceItemsListView.SelectedItems.Cast<Item>().ToList();
             foreach (var item in selectedItems)
             {
-                if (!_selectedSourceItems.Contains(item))
+                if (!this.selectedItemsFromCurrentUserInventory.Contains(item))
                 {
-                    _selectedSourceItems.Add(item);
-                    _sourceItems.Remove(item);
+                    this.selectedItemsFromCurrentUserInventory.Add(item);
+                    this.itemsOfferedByCurrentUser.Remove(item);
                 }
             }
         }
 
-        private void AddDestinationItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event for adding items from the destination list to the recipient user's selected items inventory.
+        /// Moves selected items from the available recipient list to the recipient's selected inventory for trade.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// May be thrown if the selected items cannot be cast or modified due to runtime errors.
+        /// </exception>
+        private void AddDestinationItem_Click(object sender, RoutedEventArgs eventArgs)
         {
-            var selectedItems = DestinationItemsListView.SelectedItems.Cast<Item>().ToList();
+            var selectedItems = this.DestinationItemsListView.SelectedItems.Cast<Item>().ToList();
             foreach (var item in selectedItems)
             {
-                if (!_selectedDestinationItems.Contains(item))
+                if (!this.selectedItemsFromRecipientUserInventory.Contains(item))
                 {
-                    _selectedDestinationItems.Add(item);
-                    _destinationItems.Remove(item);
+                    this.selectedItemsFromRecipientUserInventory.Add(item);
+                    this.itemsOfferedByRecipientUser.Remove(item);
                 }
             }
         }
 
-        private void RemoveSourceItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event to remove an item from the current user's selected inventory list.
+        /// The item is moved back to the list of available items offered by the current user.
+        /// </summary>
+        /// <exception cref="InvalidCastException">
+        /// Thrown if the sender is not a Button or its Tag is not an Item.
+        /// </exception>
+        private void RemoveSourceItem_Click(object sender, RoutedEventArgs eventArgs)
         {
-            var button = sender as Button;
-            var item = button.Tag as Item;
-            if (item != null)
+            if (sender is Button button && button.Tag is Item item)
             {
-                _selectedSourceItems.Remove(item);
-                _sourceItems.Add(item);
+                this.selectedItemsFromCurrentUserInventory.Remove(item);
+                this.itemsOfferedByCurrentUser.Add(item);
             }
         }
 
-        private void RemoveDestinationItem_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event to remove an item from the recipient user's selected inventory list.
+        /// The item is moved back to the list of available items offered by the recipient user.
+        /// </summary>
+        /// <exception cref="InvalidCastException">
+        /// Thrown if the sender is not a Button or its Tag is not an Item.
+        /// </exception>
+        private void RemoveDestinationItem_Click(object sender, RoutedEventArgs eventArgs)
         {
-            var button = sender as Button;
-            var item = button.Tag as Item;
-            if (item != null)
+            if (sender is Button button && button.Tag is Item item)
             {
-                _selectedDestinationItems.Remove(item);
-                _destinationItems.Add(item);
+                this.selectedItemsFromRecipientUserInventory.Remove(item);
+                this.itemsOfferedByRecipientUser.Add(item);
             }
         }
 
-        private void CreateTradeOffer_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event to create a trade offer between the current user and a selected recipient.
+        /// Validates the inputs, creates the trade, stores it in the database, and resets the form.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if the trade offer cannot be created or saved to the database.
+        /// </exception>
+        private void CreateTradeOffer_Click(object sender, RoutedEventArgs eventArgs)
         {
-            ErrorMessage.Text = string.Empty;
-            SuccessMessage.Text = string.Empty;
+            this.ErrorMessage.Text = string.Empty;
+            this.SuccessMessage.Text = string.Empty;
 
-            if (_currentUser == null)
+            if (this.currentUser == null)
             {
-                ErrorMessage.Text = "Please select your user.";
+                this.ErrorMessage.Text = ErrorSelectCurrentUser;
                 return;
             }
 
-            if (_recipientUser == null)
+            if (this.recipientUser == null)
             {
-                ErrorMessage.Text = "Please select a user to trade with.";
+                this.ErrorMessage.Text = ErrorSelectRecipientUser;
                 return;
             }
 
-            if (!_selectedSourceItems.Any() && !_selectedDestinationItems.Any())
+            if (!this.selectedItemsFromCurrentUserInventory.Any() && !this.selectedItemsFromRecipientUserInventory.Any())
             {
-                ErrorMessage.Text = "Please select at least one item to trade.";
+                this.ErrorMessage.Text = ErrorSelectItems;
                 return;
             }
 
-            string description = DescriptionTextBox.Text;
+            string description = this.DescriptionTextBox.Text;
             if (string.IsNullOrWhiteSpace(description))
             {
-                ErrorMessage.Text = "Please enter a trade description.";
+                this.ErrorMessage.Text = ErrorMissingDescription;
                 return;
             }
 
             try
             {
-                // Get the game from the first selected item (if any)
-                var game = _selectedSourceItems.FirstOrDefault()?.Game ?? 
-                          _selectedDestinationItems.FirstOrDefault()?.Game;
+                var game = this.selectedItemsFromCurrentUserInventory.FirstOrDefault()?.Game ??
+                          this.selectedItemsFromRecipientUserInventory.FirstOrDefault()?.Game;
 
                 if (game == null)
                 {
-                    ErrorMessage.Text = "Unable to determine the game for the trade.";
+                    this.ErrorMessage.Text = ErrorUnableToDetermineGame;
                     return;
                 }
 
-                var itemTrade = new ItemTrade(_currentUser, _recipientUser, game, description);
+                var itemTrade = new ItemTrade(this.currentUser, this.recipientUser, game, description);
 
-                // Add selected items to the trade
-                foreach (var item in _selectedSourceItems)
+                foreach (var item in this.selectedItemsFromCurrentUserInventory)
                 {
                     itemTrade.AddSourceUserItem(item);
                 }
 
-                foreach (var item in _selectedDestinationItems)
+                foreach (var item in this.selectedItemsFromRecipientUserInventory)
                 {
                     itemTrade.AddDestinationUserItem(item);
                 }
 
-                _dbConnector.CreateItemTrade(itemTrade);
+                this.databaseConnector.CreateItemTrade(itemTrade);
 
-                // Clear form
-                GameComboBox.SelectedIndex = -1;
-                RecipientComboBox.SelectedIndex = -1;
-                DescriptionTextBox.Text = string.Empty;
-                _selectedSourceItems.Clear();
-                _selectedDestinationItems.Clear();
-                LoadUserItems();
-                LoadRecipientItems();
+                this.GameComboBox.SelectedIndex = NoSelectionIndex;
+                this.RecipientComboBox.SelectedIndex = NoSelectionIndex;
+                this.DescriptionTextBox.Text = string.Empty;
+                this.selectedItemsFromCurrentUserInventory.Clear();
+                this.selectedItemsFromRecipientUserInventory.Clear();
+                this.LoadUserItems();
+                this.LoadRecipientItems();
 
-                // Show success message and refresh trades
-                SuccessMessage.Text = "Trade offer created successfully!";
-                LoadActiveTrades();
-                LoadTradeHistory();
+                this.SuccessMessage.Text = SuccessTradeCreated;
+                this.LoadActiveTrades();
+                this.LoadTradeHistory();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = $"An error occurred while creating the trade offer: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"Error creating item trade: {ex.Message}");
-                if (ex.InnerException != null)
+                this.ErrorMessage.Text = $"{ErrorCreatingTradePrefix}{exception.Message}";
+                System.Diagnostics.Debug.WriteLine($"{DebugTradeCreationErrorPrefix}{exception.Message}");
+                if (exception.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    System.Diagnostics.Debug.WriteLine($"{DebugInnerExceptionPrefix}{exception.InnerException.Message}");
                 }
             }
         }
 
-        private void ActiveTradesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// Handles the selection change event in the ActiveTradesListView.
+        /// When a trade is selected, it updates the ViewModel with the selected trade.
+        /// </summary>
+        /// <exception cref="InvalidCastException">
+        /// Thrown if the sender is not a ListView or its SelectedItem is not an ItemTrade.
+        /// </exception>
+        private void ActiveTradesListView_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
         {
             if (sender is ListView listView && listView.SelectedItem is ItemTrade selectedTrade)
             {
-                ViewModel.SelectedTrade = selectedTrade;
+                this.ViewModel.SelectedTrade = selectedTrade;
             }
         }
 
-        private async void AcceptTrade_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event for accepting the selected trade.
+        /// If a trade is selected, it attempts to accept it and refreshes the trade lists.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if an error occurs while accepting the trade.
+        /// </exception>
+        private void AcceptTrade_Click(object sender, RoutedEventArgs eventArgs)
         {
-            if (ViewModel.SelectedTrade == null) return;
+            if (this.ViewModel.SelectedTrade == null)
+            {
+                return;
+            }
 
             try
             {
-                ViewModel.AcceptTrade(ViewModel.SelectedTrade);
-                ViewModel.SelectedTrade = null;
-                LoadActiveTrades();
-                LoadTradeHistory();
+                this.ViewModel.AcceptTrade(this.ViewModel.SelectedTrade);
+                this.ViewModel.SelectedTrade = null;
+                this.LoadActiveTrades();
+                this.LoadTradeHistory();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = $"Error accepting trade: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
+                this.ErrorMessage.Text = $"{AcceptTradeErrorPrefix}{exception.Message}";
+                System.Diagnostics.Debug.WriteLine($"{AcceptTradeErrorPrefix}{exception.Message}");
             }
         }
 
-        private async void DeclineTrade_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Handles the click event for declining the selected trade.
+        /// If a trade is selected, it asynchronously declines the trade and refreshes the trade lists.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// Thrown if an error occurs while declining the trade.
+        /// </exception>
+        private async void DeclineTrade_Click(object sender, RoutedEventArgs eventArgs)
         {
-            if (ViewModel.SelectedTrade == null) return;
+            if (this.ViewModel.SelectedTrade == null)
+            {
+                return;
+            }
 
             try
             {
-                await ViewModel.DeclineTrade(ViewModel.SelectedTrade);
-                ViewModel.SelectedTrade = null;
-                LoadActiveTrades();
-                LoadTradeHistory();
+                await this.ViewModel.DeclineTrade(this.ViewModel.SelectedTrade);
+                this.ViewModel.SelectedTrade = null;
+                this.LoadActiveTrades();
+                this.LoadTradeHistory();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                ErrorMessage.Text = $"Error declining trade: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
+                this.ErrorMessage.Text = $"{DeclineTradeErrorPrefix}{exception.Message}";
+                System.Diagnostics.Debug.WriteLine($"{DeclineTradeErrorPrefix}{exception.Message}");
             }
         }
 
+        /// <summary>
+        /// Represents a view model for displaying a trade history entry in the UI.
+        /// Includes details about the trade, items involved, status, and partner.
+        /// </summary>
         private class TradeHistoryViewModel
         {
+            /// <summary>
+            /// Gets or sets the unique identifier of the trade.
+            /// </summary>
             public int TradeId { get; set; }
-            public string PartnerName { get; set; }
-            public List<Item> TradeItems { get; set; }
-            public string TradeDescription { get; set; }
-            public string TradeStatus { get; set; }
-            public string TradeDate { get; set; }
-            public SolidColorBrush StatusColor { get; set; }
+
+            /// <summary>
+            /// Gets or sets the username of the trade partner.
+            /// Can be null if not available.
+            /// </summary>
+            public string? PartnerName { get; set; }
+
+            /// <summary>
+            /// Gets or sets the list of items involved in the trade.
+            /// Can be null if not yet loaded or trade has no items.
+            /// </summary>
+            public List<Item>? TradeItems { get; set; }
+
+            /// <summary>
+            /// Gets or sets the textual description of the trade.
+            /// </summary>
+            public string? TradeDescription { get; set; }
+
+            /// <summary>
+            /// Gets or sets the status of the trade.
+            /// </summary>
+            public string? TradeStatus { get; set; }
+
+            /// <summary>
+            /// Gets or sets the date of the trade formatted as a string.
+            /// </summary>
+            public string? TradeDate { get; set; }
+
+            /// <summary>
+            /// Gets or sets the color used to visually indicate the trade status in the UI.
+            /// </summary>
+            public SolidColorBrush? StatusColor { get; set; }
+
+            /// <summary>
+            /// Gets or sets a value indicating whether the current user is the source of the trade.
+            /// </summary>
             public bool IsSourceUser { get; set; }
         }
     }
-} 
+}
