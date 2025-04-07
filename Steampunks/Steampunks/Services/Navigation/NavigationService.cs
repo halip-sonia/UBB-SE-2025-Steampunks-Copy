@@ -1,105 +1,104 @@
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Navigation;
-using System;
-
 namespace Steampunks.Services
 {
-    public class NavigatedEventArgs : EventArgs
-    {
-        public object Parameter { get; set; }
-        public NavigationMode NavigationMode { get; set; }
-        public Type SourcePageType { get; set; }
-    }
+    using System;
+    using Microsoft.UI.Xaml.Controls;
+    using Microsoft.UI.Xaml.Navigation;
 
     public class NavigationService : INavigationService
     {
-        private readonly IPageService _pageService;
-        private object _lastParameterUsed;
-        private Frame _frame;
+        private readonly IPageService? pageService;
+        private object? lastParameterUsed;
+        private Frame? frame;
 
-        public event NavigatedEventHandler Navigated;
+        public NavigationService(IPageService pageService)
+        {
+            this.pageService = pageService;
+        }
+
+        public event NavigatedEventHandler? Navigated;
 
         public Frame Frame
         {
             get
             {
-                if (_frame == null)
+                if (this.frame == null)
                 {
-                    _frame = new Frame();
-                    RegisterFrameEvents();
+                    this.frame = new Frame();
+                    this.RegisterFrameEvents();
                 }
-                return _frame;
+
+                return this.frame;
             }
+
             set
             {
-                UnregisterFrameEvents();
-                _frame = value;
-                RegisterFrameEvents();
+                this.UnregisterFrameEvents();
+                this.frame = value;
+                this.RegisterFrameEvents();
             }
         }
 
-        public bool CanGoBack => Frame.CanGoBack;
+        public bool CanGoBack => this.Frame.CanGoBack;
 
-        public NavigationService(IPageService pageService)
+        public bool GoBack()
         {
-            _pageService = pageService;
+            if (this.CanGoBack)
+            {
+                var viewModelBeforeNavigation = this.frame?.GetPageViewModel();
+                this.frame?.GoBack();
+                if (viewModelBeforeNavigation is INavigationAware navigationAware)
+                {
+                    navigationAware.OnNavigatedFrom();
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool NavigateTo(string pageKey, object? parameter = null, bool clearNavigation = false)
+        {
+            var pageType = this.pageService?.GetPageTypeForViewModel(pageKey);
+            if (pageType == null || !this.IsPageTypeValid(pageType))
+            {
+                return false;
+            }
+
+            if (this.Frame.Content?.GetType() != pageType || (parameter != null && !parameter.Equals(this.lastParameterUsed)))
+            {
+                this.frame.Tag = clearNavigation;
+                var viewModelBeforeNavigation = this.frame.GetPageViewModel();
+                var navigated = this.frame.Navigate(pageType, parameter);
+                if (navigated)
+                {
+                    this.lastParameterUsed = parameter;
+                    if (viewModelBeforeNavigation is INavigationAware navigationAware)
+                    {
+                        navigationAware.OnNavigatedFrom();
+                    }
+                }
+
+                return navigated;
+            }
+
+            return false;
         }
 
         private void RegisterFrameEvents()
         {
-            if (_frame != null)
+            if (this.frame != null)
             {
-                _frame.Navigated += OnNavigated;
+                this.frame.Navigated += this.OnNavigated;
             }
         }
 
         private void UnregisterFrameEvents()
         {
-            if (_frame != null)
+            if (this.frame != null)
             {
-                _frame.Navigated -= OnNavigated;
+                this.frame.Navigated -= this.OnNavigated;
             }
-        }
-
-        public bool GoBack()
-        {
-            if (CanGoBack)
-            {
-                var vmBeforeNavigation = _frame.GetPageViewModel();
-                _frame.GoBack();
-                if (vmBeforeNavigation is INavigationAware navigationAware)
-                {
-                    navigationAware.OnNavigatedFrom();
-                }
-                return true;
-            }
-            return false;
-        }
-
-        public bool NavigateTo(string pageKey, object parameter = null, bool clearNavigation = false)
-        {
-            var pageType = _pageService.GetPageTypeForViewModel(pageKey);
-            if (pageType == null || !IsPageTypeValid(pageType))
-            {
-                return false;
-            }
-
-            if (Frame.Content?.GetType() != pageType || (parameter != null && !parameter.Equals(_lastParameterUsed)))
-            {
-                _frame.Tag = clearNavigation;
-                var vmBeforeNavigation = _frame.GetPageViewModel();
-                var navigated = _frame.Navigate(pageType, parameter);
-                if (navigated)
-                {
-                    _lastParameterUsed = parameter;
-                    if (vmBeforeNavigation is INavigationAware navigationAware)
-                    {
-                        navigationAware.OnNavigatedFrom();
-                    }
-                }
-                return navigated;
-            }
-            return false;
         }
 
         private void OnNavigated(object sender, NavigationEventArgs e)
@@ -111,15 +110,16 @@ namespace Steampunks.Services
                 {
                     frame.BackStack.Clear();
                 }
+
                 if (frame.Content is Page page)
                 {
                     var navigatedEventArgs = new NavigatedEventArgs
                     {
                         Parameter = e.Parameter,
                         NavigationMode = e.NavigationMode,
-                        SourcePageType = e.SourcePageType
+                        SourcePageType = e.SourcePageType,
                     };
-                    Navigated?.Invoke(sender, navigatedEventArgs);
+                    this.Navigated?.Invoke(sender, navigatedEventArgs);
                 }
             }
         }
@@ -128,17 +128,5 @@ namespace Steampunks.Services
         {
             return pageType.IsSubclassOf(typeof(Page));
         }
-    }
-
-    public static class FrameExtensions
-    {
-        public static object GetPageViewModel(this Frame frame)
-            => frame?.Content?.GetType().GetProperty("ViewModel")?.GetValue(frame.Content);
-    }
-
-    public interface INavigationAware
-    {
-        void OnNavigatedTo(object parameter);
-        void OnNavigatedFrom();
     }
 }
