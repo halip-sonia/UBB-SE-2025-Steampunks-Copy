@@ -36,5 +36,7 @@ namespace Steampunks.Validators.InventoryValidator.InventoryValidator
         /// <param name="item">The item to validate.</param>
         /// <param name="user">The user to validate.</param>
         void ValidateInventoryOperation(Game game, Item item, User user);
+
+        void ValidateSellableItem(Item item);
     }
 }

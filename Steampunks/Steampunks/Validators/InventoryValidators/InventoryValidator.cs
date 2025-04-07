@@ -30,6 +30,12 @@ namespace Steampunks.Validators.InventoryValidators
             {
                 throw new ArgumentException("Game price cannot be negative.", nameof(game));
             }
+
+            // Expanded validation: ensure the game has a valid positive ID.
+            if (game.GameId <= 0)
+            {
+                throw new ArgumentException("Game must have a valid positive ID.", nameof(game));
+            }
         }
 
         /// <inheritdoc/>
@@ -44,6 +50,18 @@ namespace Steampunks.Validators.InventoryValidators
             {
                 throw new ArgumentException("Item name cannot be null or empty.", nameof(item));
             }
+
+            // Expanded validation: ensure the item has a valid positive ID.
+            if (item.ItemId <= 0)
+            {
+                throw new ArgumentException("Item must have a valid positive ID.", nameof(item));
+            }
+
+            // (Optional) You could also validate additional properties, e.g., if an item can only be sold once.
+            // if (item.IsSold)
+            // {
+            //     throw new InvalidOperationException("Item is already sold.");
+            // }
         }
 
         /// <inheritdoc/>
@@ -58,14 +76,38 @@ namespace Steampunks.Validators.InventoryValidators
             {
                 throw new ArgumentException("User username cannot be null or empty.", nameof(user));
             }
+
+            // Expanded validation: ensure the user has a valid positive ID.
+            if (user.UserId <= 0)
+            {
+                throw new ArgumentException("User must have a valid positive ID.", nameof(user));
+            }
         }
 
         /// <inheritdoc/>
         public void ValidateInventoryOperation(Game game, Item item, User user)
         {
+            // Reuse the individual validations.
             this.ValidateGame(game);
             this.ValidateItem(item);
             this.ValidateUser(user);
+        }
+
+        /// <summary>
+        /// Validates whether an item is eligible to be sold.
+        /// </summary>
+        /// <param name="item">The item to validate.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the item is already listed.</exception>
+        public void ValidateSellableItem(Item item)
+        {
+            // First, validate the basic properties of the item.
+            this.ValidateItem(item);
+
+            // Expanded validation: ensure the item is not already listed for sale.
+            if (item.IsListed)
+            {
+                throw new InvalidOperationException("Item is already listed and cannot be sold.");
+            }
         }
     }
 }

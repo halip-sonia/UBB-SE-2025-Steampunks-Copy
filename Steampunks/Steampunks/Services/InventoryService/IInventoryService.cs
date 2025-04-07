@@ -44,5 +44,16 @@ namespace Steampunks.Services.InventoryService.InventoryService
         /// <param name="user">The user whose inventory the item is being removed from.</param>
         /// <returns>RemoveInventoryItemAsync returns <see cref="Task"/> representing the asynchronous operation.</returns>
         Task RemoveItemFromInventoryAsync(Game game, Item item, User user);
+
+        /// <summary>
+        /// Get the inventory of a given User by it's userID Asynchronously.
+        /// </summary>
+        /// <param name="userId">The id of the user whose inventory items are to be retrieved.</param>
+        /// <returns>A <see cref="Task"/> asynchronously resolving to a list of <see cref="Item"/> objects associated with the specified user.</returns>
+        Task<List<Item>> GetUserInventoryAsync(int userId);
+
+        Task<List<User>> GetAllUsersAsync();
+
+        Task<bool> SellItemAsync(Item item);
     }
 }
