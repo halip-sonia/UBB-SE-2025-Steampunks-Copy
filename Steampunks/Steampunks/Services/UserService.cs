@@ -1,9 +1,15 @@
+// <copyright file="UserService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 namespace Steampunks.Services
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
+    using Steampunks.Repository.GameRepo;
+    using Steampunks.Repository.UserRepository;
 
     /// <summary>
     /// Provides services related to user management, including retrieval and update operations.
@@ -11,21 +17,21 @@ namespace Steampunks.Services
     public class UserService
     {
         /// <summary>
-        /// The database connector used to perform user-related data operations.
+        /// The user repository used to perform user-related data operations.
         /// </summary>
         /// <remarks>
-        /// This field is initialized in the constructor and used for retrieving, updating, and querying user data
-        /// in the underlying database.
+        /// This field is initialized in the constructor and is responsible for interacting with the user-related
+        /// persistence logic, abstracting the database access layer.
         /// </remarks>
-        private readonly DatabaseConnector dataBaseConnector;
+        private readonly IUserRepository userRepository;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UserService"/> class with the specified database connector.
         /// </summary>
-        /// <param name="dataBaseConnector">The database connector used to interact with the data store.</param>
-        public UserService(DatabaseConnector dataBaseConnector)
+        /// <param name="userRepository">The database connector used to interact with the data store.</param>
+        public UserService(IUserRepository userRepository)
         {
-            this.dataBaseConnector = dataBaseConnector;
+            this.userRepository = userRepository;
         }
 
         /// <summary>
@@ -34,7 +40,7 @@ namespace Steampunks.Services
         /// <returns>A task that represents the asynchronous operation. The task result contains a list of <see cref="User"/> objects.</returns>
         public async Task<List<User>> GetAllUsersAsync()
         {
-            return await Task.Run(() => this.dataBaseConnector.GetAllUsers());
+            return await Task.Run(() => this.userRepository.GetAllUsersAsync());
         }
 
         /// <summary>
@@ -45,9 +51,9 @@ namespace Steampunks.Services
         /// A task that represents the asynchronous operation. The task result contains the <see cref="User"/> object,
         /// or <c>null</c> if no user with the specified ID is found.
         /// </returns>
-        public async Task<User> GetUserByIdAsync(int userId)
+        public async Task<User?> GetUserByIdAsync(int userId)
         {
-            return await Task.Run(() => this.dataBaseConnector.GetUserById(userId));
+            return await Task.Run(() => this.userRepository.GetUserByIdAsync(userId));
         }
 
         /// <summary>
@@ -57,7 +63,7 @@ namespace Steampunks.Services
         /// <returns>A task representing the asynchronous operation, with a result indicating whether the update was successful.</returns>
         public async Task<bool> UpdateUserAsync(User user)
         {
-            return await Task.Run(() => this.dataBaseConnector.UpdateUser(user));
+            return await Task.Run(() => this.userRepository.UpdateUserAsync(user));
         }
     }
 }

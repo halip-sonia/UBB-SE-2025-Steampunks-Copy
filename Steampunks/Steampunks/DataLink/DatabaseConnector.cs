@@ -1775,7 +1775,7 @@ namespace Steampunks.DataLink
             }
         }
 
-        private void InsertTestUsers()
+        public void InsertTestUsers()
         {
             var testUsers = new List<string>
             {
