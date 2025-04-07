@@ -7,35 +7,35 @@ namespace Steampunks.Services
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
+    using Steampunks.Repository.Trade;
 
     /// <summary>
     /// Service for trading operations.
     /// </summary>
     public class TradeService : ITradeService
     {
-        private readonly DatabaseConnector databaseConnector;
+        private readonly ITradeRepository tradeRepository;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TradeService"/> class.
         /// </summary>
-        /// <param name="databaseConnector">The connector to the database.</param>
-        public TradeService(DatabaseConnector databaseConnector)
+        /// <param name="tradeRepository">the interface for the TradeRepository.</param>
+        public TradeService(ITradeRepository tradeRepository)
         {
-            this.databaseConnector = databaseConnector;
+            this.tradeRepository = tradeRepository;
         }
 
         /// <inheritdoc/>
         public async Task<List<ItemTrade>> GetActiveTradesAsync(int userId)
         {
-            return await Task.Run(() => this.databaseConnector.GetActiveItemTrades(userId));
+            return await this.tradeRepository.GetActiveTradesAsync(userId);
         }
 
         /// <inheritdoc/>
         public async Task<List<ItemTrade>> GetTradeHistoryAsync(int userId)
         {
-            return await Task.Run(() => this.databaseConnector.GetItemTradeHistory(userId));
+            return await this.tradeRepository.GetTradeHistoryAsync(userId);
         }
 
         /// <inheritdoc/>
@@ -45,7 +45,7 @@ namespace Steampunks.Services
             {
                 try
                 {
-                    this.databaseConnector.CreateItemTrade(trade);
+                    this.tradeRepository.AddItemTradeAsync(trade);
                 }
                 catch (Exception ex)
                 {
@@ -58,94 +58,97 @@ namespace Steampunks.Services
         /// <inheritdoc/>
         public async Task UpdateTradeAsync(ItemTrade trade)
         {
-            await Task.Run(() =>
+            try
             {
-                try
-                {
-                    this.databaseConnector.UpdateItemTrade(trade);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
-                    throw;
-                }
-            });
+                await this.tradeRepository.UpdateItemTradeAsync(trade);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
+                throw;
+            }
         }
 
         /// <inheritdoc/>
         public async Task AcceptTradeAsync(ItemTrade trade, bool isSourceUser)
         {
-            await Task.Run(() =>
+            try
             {
-                try
+                if (isSourceUser)
                 {
-                    if (isSourceUser)
-                    {
-                        trade.AcceptBySourceUser();
-                    }
-                    else
-                    {
-                        trade.AcceptByDestinationUser();
-                    }
-
-                    this.databaseConnector.UpdateItemTrade(trade);
-
-                    // If both users have accepted, complete the trade
-                    if (trade.AcceptedBySourceUser && trade.AcceptedByDestinationUser)
-                    {
-                        this.CompleteTrade(trade);
-                    }
+                    trade.AcceptBySourceUser();
                 }
-                catch (Exception ex)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
-                    throw;
+                    trade.AcceptByDestinationUser();
                 }
-            });
+
+                await this.tradeRepository.UpdateItemTradeAsync(trade);
+
+                // If both users have accepted, complete the trade
+                if (trade.AcceptedBySourceUser && trade.AcceptedByDestinationUser)
+                {
+                    this.CompleteTrade(trade);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
+                throw;
+            }
         }
 
         /// <inheritdoc/>
         public async Task DeclineTradeAsync(ItemTrade trade)
         {
-            await Task.Run(() =>
+            try
             {
-                try
-                {
-                    trade.Decline();
-                    this.databaseConnector.UpdateItemTrade(trade);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
-                    throw;
-                }
-            });
+                trade.Decline();
+                await this.tradeRepository.UpdateItemTradeAsync(trade);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
+                throw;
+            }
         }
 
-        private void CompleteTrade(ItemTrade trade)
+        private async void CompleteTrade(ItemTrade trade)
         {
             try
             {
                 // Transfer source user items to destination user
                 foreach (var item in trade.SourceUserItems)
                 {
-                    this.databaseConnector.TransferItem(item.ItemId, trade.SourceUser.UserId, trade.DestinationUser.UserId);
+                    await this.tradeRepository.TransferItemAsync(item.ItemId, trade.SourceUser.UserId, trade.DestinationUser.UserId);
                 }
 
                 // Transfer destination user items to source user
                 foreach (var item in trade.DestinationUserItems)
                 {
-                    this.databaseConnector.TransferItem(item.ItemId, trade.DestinationUser.UserId, trade.SourceUser.UserId);
+                    await this.tradeRepository.TransferItemAsync(item.ItemId, trade.DestinationUser.UserId, trade.SourceUser.UserId);
                 }
 
                 trade.Complete();
-                this.databaseConnector.UpdateItemTrade(trade);
+                await this.tradeRepository.UpdateItemTradeAsync(trade);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error completing trade: {ex.Message}");
                 throw;
             }
+        }
+
+        /// <inheritdoc/>
+        public async Task<User?> GetCurrentUserAsync()
+        {
+            return await this.tradeRepository.GetCurrentUserAsync();
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Item>> GetUserInventoryAsync(int userId)
+        {
+            return await this.tradeRepository.GetUserInventoryAsync(userId);
         }
     }
 }

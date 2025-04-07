@@ -12,7 +12,7 @@ namespace Steampunks.Services
     /// <summary>
     /// Provides services related to user management, including retrieval and update operations.
     /// </summary>
-    internal interface IUserService
+    public interface IUserService
     {
         /// <summary>
         /// Asynchronously retrieves a user by their unique identifier.

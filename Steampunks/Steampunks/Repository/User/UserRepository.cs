@@ -17,7 +17,7 @@ namespace Steampunks.Repository.UserRepository
     /// <summary>
     /// Provides data access methods for interacting with the user-related data in the database.
     /// </summary>
-    public class UserRepository
+    public class UserRepository : IUserRepository
     {
         /// <summary>
         /// The database connector instance used to establish and manage SQL connections.

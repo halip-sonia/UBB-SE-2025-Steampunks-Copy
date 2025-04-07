@@ -55,5 +55,18 @@ namespace Steampunks.Services
         /// <param name="trade">The modified trade.</param>
         /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
         Task UpdateTradeAsync(ItemTrade trade);
+
+        /// <summary>
+        /// Gets the current user from the database asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        Task<User?> GetCurrentUserAsync();
+
+        /// <summary>
+        /// Gets the inventory of the given user from the database asynchronously.
+        /// </summary>
+        /// <param name="userId">The userID for which to fetch the inventory.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        Task<List<Item>> GetUserInventoryAsync(int userId);
     }
 }

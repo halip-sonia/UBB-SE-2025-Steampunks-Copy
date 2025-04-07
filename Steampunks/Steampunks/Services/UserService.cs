@@ -14,7 +14,7 @@ namespace Steampunks.Services
     /// <summary>
     /// Provides services related to user management, including retrieval and update operations.
     /// </summary>
-    public class UserService
+    public class UserService : IUserService
     {
         /// <summary>
         /// The user repository used to perform user-related data operations.

@@ -16,6 +16,8 @@ namespace Steampunks.Views
     using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
     using Steampunks.Repository.GameRepo;
+    using Steampunks.Repository.Trade;
+    using Steampunks.Repository.UserRepository;
     using Steampunks.Services;
     using Steampunks.ViewModels;
 
@@ -62,9 +64,9 @@ namespace Steampunks.Views
         private const int NoSelectionIndex = -1;
 
         private readonly DatabaseConnector databaseConnector;
-        private readonly TradeService tradeService;
-        private readonly UserService userService;
-        private readonly GameService gameService;
+        private readonly ITradeService tradeService;
+        private readonly IUserService userService;
+        private readonly IGameService gameService;
 
         private User? currentUser;
         private User? recipientUser;
@@ -80,10 +82,10 @@ namespace Steampunks.Views
         {
             this.InitializeComponent();
             this.databaseConnector = new DatabaseConnector();
-            this.tradeService = new TradeService(this.databaseConnector);
-            this.userService = new UserService(this.databaseConnector);
+            this.tradeService = new TradeService(new TradeRepository());
+            this.userService = new UserService(new UserRepository());
             this.gameService = new GameService(new GameRepository());
-            this.ViewModel = new TradeViewModel(this.tradeService, this.userService, this.gameService, this.databaseConnector);
+            this.ViewModel = new TradeViewModel(this.tradeService, this.userService, this.gameService);
             this.ActiveTrades = new ObservableCollection<ItemTrade>();
             this.TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
             this.itemsOfferedByCurrentUser = new ObservableCollection<Item>();
@@ -591,7 +593,7 @@ namespace Steampunks.Views
 
             try
             {
-                await this.ViewModel.DeclineTrade(this.ViewModel.SelectedTrade);
+                await this.ViewModel.DeclineTradeAsync(this.ViewModel.SelectedTrade);
                 this.ViewModel.SelectedTrade = null;
                 this.LoadActiveTrades();
                 this.LoadTradeHistory();
