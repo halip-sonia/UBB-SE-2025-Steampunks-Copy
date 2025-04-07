@@ -9,14 +9,14 @@ namespace Steampunks.Services
                 typeof(NavigationHelper),
                 new Microsoft.UI.Xaml.PropertyMetadata(null));
 
-        public static string GetNavigateTo(Microsoft.UI.Xaml.DependencyObject obj)
+        public static string GetNavigateTo(Microsoft.UI.Xaml.DependencyObject uiTargetElement)
         {
-            return (string)obj.GetValue(NavigateToProperty);
+            return (string)uiTargetElement.GetValue(NavigateToProperty);
         }
 
-        public static void SetNavigateTo(Microsoft.UI.Xaml.DependencyObject obj, string value)
+        public static void SetNavigateTo(Microsoft.UI.Xaml.DependencyObject uiTargetElement, string value)
         {
-            obj.SetValue(NavigateToProperty, value);
+            uiTargetElement.SetValue(NavigateToProperty, value);
         }
     }
-} 
+}
