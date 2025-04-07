@@ -1,4 +1,8 @@
-﻿namespace Steampunks.Services
+﻿// <copyright file="IUserService.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+namespace Steampunks.Services
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;
@@ -18,7 +22,7 @@
         /// A task that represents the asynchronous operation. The task result contains the <see cref="User"/> object,
         /// or <c>null</c> if no user with the specified ID is found.
         /// </returns>
-        public Task<User> GetUserByIdAsync(int userId);
+        public Task<User?> GetUserByIdAsync(int userId);
 
         /// <summary>
         /// Asynchronously retrieves all users from the database.
