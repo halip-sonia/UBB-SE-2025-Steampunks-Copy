@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml.Data;
 using System;
 
-namespace Steampunks.Converters
+namespace Steampunks.Views.Converters
 {
     public class InverseBooleanConverter : IValueConverter
     {

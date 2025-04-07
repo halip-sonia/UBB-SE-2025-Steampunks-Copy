@@ -1,17 +1,17 @@
-using System;
 using Microsoft.UI.Xaml.Data;
+using System;
 
-namespace Steampunks.Converters
+namespace Steampunks.Views.Converters
 {
-    public class PriceConverter : IValueConverter
+    public class CurrencyConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is float price)
             {
-                return $"Price: ${price:F2}";
+                return $"${price:F2}";
             }
-            return "Price: $0.00";
+            return "$0.00";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
