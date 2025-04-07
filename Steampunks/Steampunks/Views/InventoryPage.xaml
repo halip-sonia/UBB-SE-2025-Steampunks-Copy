@@ -43,7 +43,7 @@
         <ListView Grid.Row="1" 
                   ItemsSource="{x:Bind ViewModel.InventoryItems, Mode=OneWay}"
                   IsItemClickEnabled="True"
-                  ItemClick="ListView_ItemClick">
+                  ItemClick="OnInventoryItemClicked">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="entities:Item">
                     <Grid Width="200" Height="250" Margin="10">
@@ -61,7 +61,7 @@
                         <TextBlock Grid.Row="2" Text="{x:Bind Price}" 
                                    HorizontalAlignment="Center"/>
                         <Button Grid.Row="3" Content="Sell Item" 
-                                Click="SellItem_Click" 
+                                Click="OnSellItemButtonClicked" 
                                 HorizontalAlignment="Center"
                                 IsEnabled="{x:Bind IsListed, Converter={StaticResource InverseBooleanConverter}}"/>
                     </Grid>
