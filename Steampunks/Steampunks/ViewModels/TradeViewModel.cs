@@ -20,9 +20,8 @@ namespace Steampunks.ViewModels
     public partial class TradeViewModel : INotifyPropertyChanged, ITradeViewModel
     {
         private readonly ITradeService tradeService;
-        private readonly UserService userService;
-        private readonly GameService gameService;
-        private readonly DatabaseConnector dbConnector;
+        private readonly IUserService userService;
+        private readonly IGameService gameService;
         private ObservableCollection<Item> sourceUserItems;
         private ObservableCollection<Item> destinationUserItems;
         private ObservableCollection<Item> selectedSourceItems;
@@ -44,12 +43,11 @@ namespace Steampunks.ViewModels
         /// <param name="userService">The service for user operations.</param>
         /// <param name="gameService">The service for game operations.</param>
         /// <param name="dbConnector">The connector to the database.</param>
-        public TradeViewModel(ITradeService tradeService, UserService userService, GameService gameService, DatabaseConnector dbConnector)
+        public TradeViewModel(ITradeService tradeService, IUserService userService, IGameService gameService)
         {
             this.tradeService = tradeService;
             this.userService = userService;
             this.gameService = gameService;
-            this.dbConnector = dbConnector ?? throw new ArgumentNullException(nameof(dbConnector));
             this.sourceUserItems = new ObservableCollection<Item>();
             this.destinationUserItems = new ObservableCollection<Item>();
             this.selectedSourceItems = new ObservableCollection<Item>();
@@ -353,7 +351,7 @@ namespace Steampunks.ViewModels
                     trade.AddDestinationUserItem(item);
                 }
 
-                this.dbConnector.CreateItemTrade(trade);
+                await this.tradeService.CreateTradeAsync(trade);
                 await this.LoadActiveTradesAsync();
 
                 // Clear selections
@@ -408,17 +406,17 @@ namespace Steampunks.ViewModels
         }
 
         /// <inheritdoc/>
-        public Task<bool> DeclineTrade(ItemTrade trade)
+        public async Task<bool> DeclineTradeAsync(ItemTrade trade)
         {
             if (trade == null)
             {
-                return Task.FromResult(false);
+                return false;
             }
 
             try
             {
                 trade.Decline();
-                this.dbConnector.UpdateItemTrade(trade);
+                await this.tradeService.UpdateTradeAsync(trade);
 
                 // Clear the selected trade
                 this.SelectedTrade = null;
@@ -431,12 +429,12 @@ namespace Steampunks.ViewModels
                 this.OnPropertyChanged(nameof(this.ActiveTrades));
                 this.OnPropertyChanged(nameof(this.TradeHistory));
 
-                return Task.FromResult(true);
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
-                return Task.FromResult(false);
+                return false;
             }
         }
 
@@ -445,7 +443,6 @@ namespace Steampunks.ViewModels
         {
             try
             {
-                // var users = this.dbConnector.GetAllUsers();
                 var users = await this.userService.GetAllUsersAsync();
 
                 this.Users.Clear();
@@ -465,7 +462,6 @@ namespace Steampunks.ViewModels
         {
             try
             {
-                // var games = this.dbConnector.GetGamesAsync();
                 var games = await this.gameService.GetAllGamesAsync();
 
                 this.Games.Clear();
@@ -497,11 +493,11 @@ namespace Steampunks.ViewModels
             this.LoadActiveTrades();
         }
 
-        private void LoadCurrentUser()
+        private async void LoadCurrentUser()
         {
             try
             {
-                this.CurrentUser = this.dbConnector.GetCurrentUser();
+                this.CurrentUser = await this.tradeService.GetCurrentUserAsync();
             }
             catch (Exception ex)
             {
@@ -509,7 +505,7 @@ namespace Steampunks.ViewModels
             }
         }
 
-        private void LoadUserInventory()
+        private async void LoadUserInventory()
         {
             if (this.CurrentUser == null)
             {
@@ -518,7 +514,7 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var items = this.dbConnector.GetUserInventory(this.CurrentUser.UserId);
+                var items = await this.tradeService.GetUserInventoryAsync(this.CurrentUser.UserId);
                 this.SourceUserItems.Clear();
                 foreach (var item in items.Where(i => !i.IsListed))
                 {
@@ -534,7 +530,7 @@ namespace Steampunks.ViewModels
             }
         }
 
-        private void LoadDestinationUserInventory()
+        private async void LoadDestinationUserInventory()
         {
             if (this.SelectedUser == null)
             {
@@ -543,7 +539,7 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var items = this.dbConnector.GetUserInventory(this.SelectedUser.UserId);
+                var items = await this.tradeService.GetUserInventoryAsync(this.SelectedUser.UserId);
                 this.DestinationUserItems.Clear();
                 foreach (var item in items.Where(i => !i.IsListed))
                 {
@@ -581,7 +577,7 @@ namespace Steampunks.ViewModels
             }
         }
 
-        private void LoadActiveTrades()
+        private async void LoadActiveTrades()
         {
             if (this.CurrentUser == null)
             {
@@ -590,7 +586,7 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var trades = this.dbConnector.GetActiveItemTrades(this.CurrentUser.UserId);
+                var trades = await this.tradeService.GetActiveTradesAsync(this.CurrentUser.UserId);
                 this.ActiveTrades.Clear();
                 foreach (var trade in trades)
                 {
@@ -603,7 +599,7 @@ namespace Steampunks.ViewModels
             }
         }
 
-        private void LoadTradeHistory()
+        private async void LoadTradeHistory()
         {
             if (this.CurrentUser == null)
             {
@@ -612,7 +608,7 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var trades = this.dbConnector.GetItemTradeHistory(this.CurrentUser.UserId);
+                var trades = await this.tradeService.GetTradeHistoryAsync(this.CurrentUser.UserId);
                 this.TradeHistory.Clear();
                 foreach (var trade in trades)
                 {

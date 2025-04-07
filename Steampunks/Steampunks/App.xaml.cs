@@ -92,10 +92,10 @@ namespace Steampunks
             // Add application services
             services.AddTransient<UserService>();
             services.AddTransient<GameService>();
-            services.AddTransient<TradeService>();
+            services.AddTransient<ITradeService>();
 
             // Add view models
-            services.AddTransient<TradeViewModel>();
+            services.AddTransient<ITradeViewModel>();
 
             // Configure pages
             services.Configure<PageServiceOptions>(options =>

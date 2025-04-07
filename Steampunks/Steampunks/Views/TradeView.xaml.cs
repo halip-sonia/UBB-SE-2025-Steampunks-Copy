@@ -43,14 +43,14 @@ namespace Steampunks.Views
         public TradeView()
         {
             this.InitializeComponent();
-            this.ViewModel = App.GetService<TradeViewModel>();
+            this.ViewModel = App.GetService<ITradeViewModel>();
             this.DataContext = this;
         }
 
         /// <summary>
         /// Gets the ViewModel used for handling trade logic and data binding.
         /// </summary>
-        public TradeViewModel ViewModel { get; }
+        public ITradeViewModel ViewModel { get; }
 
         /// <summary>
         /// Handles page load event and initializes user and game lists.
@@ -202,7 +202,7 @@ namespace Steampunks.Views
 
                 if (userDialogResult == ContentDialogResult.Primary)
                 {
-                    await this.ViewModel.DeclineTrade(tradeToDecline);
+                    await this.ViewModel.DeclineTradeAsync(tradeToDecline);
                 }
             }
         }

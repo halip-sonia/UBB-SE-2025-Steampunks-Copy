@@ -128,7 +128,7 @@ namespace Steampunks.ViewModels
         /// </summary>
         /// <param name="trade">The trade to be declined.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
-        Task<bool> DeclineTrade(ItemTrade trade);
+        Task<bool> DeclineTradeAsync(ItemTrade trade);
 
         /// <summary>
         /// Populates the Games list with data from the database.
