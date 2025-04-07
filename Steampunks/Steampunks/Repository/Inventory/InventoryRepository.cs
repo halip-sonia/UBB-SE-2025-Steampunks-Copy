@@ -87,6 +87,94 @@ namespace Steampunks.Repository.Inventory
         }
 
         /// <summary>
+        /// Get the inventory of a given User by it's userID Asynchronously.
+        /// </summary>
+        /// <param name="userId">The id of the user whose inventory items are to be retrieved.</param>
+        /// <returns>A <see cref="Task"/> asynchronously resolving to a list of <see cref="Item"/> objects associated with the specified user.</returns>
+        public async Task<List<Item>> GetUserInventoryAsync(int userId)
+        {
+            var items = new List<Item>();
+            const string query = @"
+                SELECT 
+                    i.ItemId,
+                    i.ItemName,
+                    i.Price,
+                    i.Description,
+                    i.IsListed,
+                    g.GameId,
+                    g.Title as GameTitle,
+                    g.Genre,
+                    g.Description as GameDescription,
+                    g.Price as GamePrice,
+                    g.Status as GameStatus
+                FROM Items i
+                JOIN Games g ON i.CorrespondingGameId = g.GameId
+                JOIN UserInventory ui ON i.ItemId = ui.ItemId AND g.GameId = ui.GameId
+                WHERE ui.UserId = @UserId
+                ORDER BY g.Title, i.Price";
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Executing GetUserInventory query for userId: {userId}");
+                using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    await this.dataBaseConnector.OpenConnectionAsync();
+                    System.Diagnostics.Debug.WriteLine("Connection opened successfully");
+
+                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                    {
+                        System.Diagnostics.Debug.WriteLine("Query executed successfully");
+                        while (await reader.ReadAsync().ConfigureAwait(false))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Found item: {reader.GetString(reader.GetOrdinal("ItemName"))}");
+                            var game = new Game(
+                                reader.GetString(reader.GetOrdinal("GameTitle")),
+                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                reader.GetString(reader.GetOrdinal("Genre")),
+                                reader.GetString(reader.GetOrdinal("GameDescription")));
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+
+                            var item = new Item(
+                                reader.GetString(reader.GetOrdinal("ItemName")),
+                                game,
+                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                reader.GetString(reader.GetOrdinal("Description")));
+                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+
+                            // Set image path based on game and item name
+                            string imagePath = this.dataBaseConnector.GetItemImagePath(item);
+                            item.SetImagePath(imagePath);
+
+                            items.Add(item);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"Total items found: {items.Count}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+
+                throw;
+            }
+            finally
+            {
+                this.dataBaseConnector.CloseConnection();
+            }
+
+            return items;
+        }
+
+        /// <summary>
         /// Retrieves all inventory items associated with a specific user across all games.
         /// </summary>
         /// <param name="user">The user whose inventory is to be retrieved.</param>
@@ -123,7 +211,7 @@ namespace Steampunks.Repository.Inventory
                 using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
                 {
                     command.Parameters.AddWithValue("@UserId", user.UserId);
-                    this.dataBaseConnector.OpenConnectionAsync();
+                    await this.dataBaseConnector.OpenConnectionAsync();
                     using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                     {
                         while (await reader.ReadAsync().ConfigureAwait(false))
@@ -226,7 +314,7 @@ namespace Steampunks.Repository.Inventory
                     command.Parameters.AddWithValue("@UserId", user.UserId);
                     command.Parameters.AddWithValue("@GameId", game.GameId);
                     command.Parameters.AddWithValue("@ItemId", item.ItemId);
-                    this.dataBaseConnector.OpenConnectionAsync();
+                    await this.dataBaseConnector.OpenConnectionAsync();
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
             }
@@ -234,6 +322,93 @@ namespace Steampunks.Repository.Inventory
             {
                 this.dataBaseConnector.CloseConnection();
             }
+        }
+
+        /// <summary>
+        /// Asynchronously sells the specified item by updating its listed status.
+        /// </summary>
+        /// <param name="item">The item to be sold.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a value indicating whether the operation succeeded.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is null.</exception>
+        public async Task<bool> SellItemAsync(Item item)
+        {
+            if (item == null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
+            try
+            {
+                // Start transaction.
+                await this.dataBaseConnector.OpenConnectionAsync().ConfigureAwait(false);
+                using (var transaction = this.dataBaseConnector.GetConnection().BeginTransaction())
+                {
+                    try
+                    {
+                        // Update item's listed status.
+                        using (var command = new SqlCommand(
+                            @"
+                            UPDATE Items 
+                            SET IsListed = 1
+                            WHERE ItemId = @ItemId", this.dataBaseConnector.GetConnection(),
+                            transaction))
+                        {
+                            command.Parameters.AddWithValue("@ItemId", item.ItemId);
+                            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        }
+
+                        // Commit transaction asynchronously.
+                        // (Assuming the underlying transaction supports asynchronous commit.)
+                        await transaction.CommitAsync().ConfigureAwait(false);
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error in transaction: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error selling item: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                return false;
+            }
+            finally
+            {
+                this.dataBaseConnector.CloseConnection();
+            }
+        }
+
+        public async Task<List<User>> GetAllUsersAsync()
+        {
+            var users = new List<User>();
+            using (var command = new SqlCommand("SELECT UserId, Username FROM Users", this.dataBaseConnector.GetConnection()))
+            {
+                try
+                {
+                    await this.dataBaseConnector.OpenConnectionAsync();
+                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                    {
+                        while (await reader.ReadAsync().ConfigureAwait(false))
+                        {
+                            var user = new User(reader.GetString(reader.GetOrdinal("Username")));
+                            user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
+                            users.Add(user);
+                        }
+                    }
+                }
+                finally
+                {
+                    this.dataBaseConnector.CloseConnection();
+                }
+            }
+
+            return users;
         }
     }
 }
