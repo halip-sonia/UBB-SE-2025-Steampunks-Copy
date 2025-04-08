@@ -9,6 +9,7 @@ namespace Steampunks.Repository.Trade
     using System.Data;
     using System.Threading.Tasks;
     using Microsoft.Data.SqlClient;
+    using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
     using Steampunks.Utils;
 
@@ -17,14 +18,14 @@ namespace Steampunks.Repository.Trade
     /// </summary>
     public class TradeRepository : ITradeRepository
     {
-        private readonly string connectionString;
+        private DatabaseConnector? dataBaseConnector;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TradeRepository"/> class.
         /// </summary>
         public TradeRepository()
         {
-            this.connectionString = Configuration.CONNECTIONSTRINGILINCA;
+            this.dataBaseConnector = new DatabaseConnector();
         }
 
         /// <inheritdoc/>
@@ -51,7 +52,7 @@ namespace Steampunks.Repository.Trade
                 JOIN Games g ON i.CorrespondingGameId = g.GameId
                 WHERE td.TradeId = @TradeId";
 
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
 
@@ -169,7 +170,7 @@ namespace Steampunks.Repository.Trade
                 JOIN Games g ON i.CorrespondingGameId = g.GameId
                 WHERE td.TradeId = @TradeId";
 
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
 
@@ -276,7 +277,7 @@ namespace Steampunks.Repository.Trade
                 INSERT INTO ItemTradeDetails (TradeId, ItemId, IsSourceUserItem)
                 VALUES (@TradeId, @ItemId, @IsSourceUserItem)";
 
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
                 using (var transaction = connection.BeginTransaction())
@@ -353,7 +354,7 @@ namespace Steampunks.Repository.Trade
                 FROM ItemTradeDetails
                 WHERE TradeId = @TradeId";
 
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
                 using (var transaction = connection.BeginTransaction())
@@ -446,7 +447,7 @@ namespace Steampunks.Repository.Trade
                 SET UserId = @ToUserId
                 WHERE ItemId = @ItemId AND UserId = @FromUserId";
 
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
                 using (var command = new SqlCommand(query, connection))
@@ -466,7 +467,7 @@ namespace Steampunks.Repository.Trade
         /// <inheritdoc/>
         public async Task<User?> GetCurrentUserAsync()
         {
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
                 using (var command = new SqlCommand("SELECT TOP 1 UserId, Username FROM Users", connection))
@@ -511,7 +512,7 @@ namespace Steampunks.Repository.Trade
 
             try
             {
-                using (var connection = new SqlConnection(this.connectionString))
+                using (var connection = this.dataBaseConnector.GetNewConnection())
                 {
                     await connection.OpenAsync();
                     System.Diagnostics.Debug.WriteLine($"Executing GetUserInventory query for userId: {userId}");
