@@ -1,3 +1,7 @@
+// <copyright file="DatabaseConnector.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
 namespace Steampunks.DataLink
 {
     using System;
@@ -44,13 +48,14 @@ namespace Steampunks.DataLink
 
         public async Task OpenConnectionAsync()
         {
-            if (connection == null)
+            if (this.connection == null)
             {
-                connection = new SqlConnection(connectionString);
+                this.connection = new SqlConnection(this.connectionString);
             }
-            if (connection.State != ConnectionState.Open)
+
+            if (this.connection.State != ConnectionState.Open)
             {
-                await connection.OpenAsync().ConfigureAwait(false);
+                await this.connection.OpenAsync().ConfigureAwait(false);
             }
         }
 
@@ -64,22 +69,9 @@ namespace Steampunks.DataLink
 
         public async Task CloseConnectionAsync()
         {
-            if (connection?.State != ConnectionState.Closed)
+            if (this.connection?.State != ConnectionState.Closed)
             {
-                await Task.Run(() => connection.Close());
-            }
-        }
-
-        public void DisposeConnection()
-        {
-            if (this.connection != null)
-            {
-                if (this.connection.State != ConnectionState.Closed)
-                {
-                    this.connection.Close();
-                }
-                this.connection.Dispose();
-                this.connection = null;
+                await Task.Run(() => this.connection.Close());
             }
         }
 
@@ -140,77 +132,6 @@ namespace Steampunks.DataLink
             }
         }
 
-        public User? GetUserByUsername(string username)
-        {
-            using (var command = new SqlCommand("SELECT UserId, Username FROM Users WHERE Username = @Username", this.GetConnection()))
-            {
-                command.Parameters.AddWithValue("@Username", username);
-                try
-                {
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            var user = new User(reader.GetString(reader.GetOrdinal("Username")));
-                            user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
-                            return user;
-                        }
-
-                        return null;
-                    }
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-        }
-
-        public void CreateGameTrade(GameTrade trade)
-        {
-            using (var command = new SqlCommand(@" INSERT INTO GameTrades (SourceUserId, DestinationUserId, GameId, TradeDescription) VALUES (@SourceUserId, @DestinationUserId, @GameId, @TradeDescription); SELECT SCOPE_IDENTITY();", this.GetConnection()))
-            {
-                command.Parameters.AddWithValue("@SourceUserId", trade.GetSourceUser().UserId);
-                command.Parameters.AddWithValue("@DestinationUserId", trade.GetDestinationUser().UserId);
-                command.Parameters.AddWithValue("@GameId", trade.GetTradeGame().GameId);
-                command.Parameters.AddWithValue("@TradeDescription", trade.TradeDescription);
-
-                try
-                {
-                    this.OpenConnection();
-                    var tradeId = Convert.ToInt32(command.ExecuteScalar());
-                    trade.SetTradeId(tradeId);
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-        }
-
-        public void ExecuteStoredProcedure(string procedureName, params SqlParameter[] parameters)
-        {
-            using (var command = new SqlCommand(procedureName, this.GetConnection()))
-            {
-                command.CommandType = System.Data.CommandType.StoredProcedure;
-                if (parameters != null)
-                {
-                    command.Parameters.AddRange(parameters);
-                }
-
-                try
-                {
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-        }
-
         public bool TestConnection()
         {
             try
@@ -231,112 +152,6 @@ namespace Steampunks.DataLink
                 System.Diagnostics.Debug.WriteLine($"Database connection test failed: {ex.Message}");
                 return false;
             }
-        }
-
-        public List<GameTrade> GetActiveGameTrades(int userId)
-        {
-            var trades = new List<GameTrade>();
-
-            using (var command = new SqlCommand(@"SELECT t.TradeId, t.TradeDate, t.TradeDescription, t.TradeStatus, t.AcceptedBySourceUser, t.AcceptedByDestinationUser,su.UserId as SourceUserId, su.Username as SourceUsername, du.UserId as DestUserId, du.Username as DestUsername,g.GameId, g.Title, g.Price, g.Genre, g.Description FROM GameTrades t JOIN Users su ON t.SourceUserId = su.UserId JOIN Users du ON t.DestinationUserId = du.UserId JOIN Games g ON t.GameId = g.GameId WHERE (t.SourceUserId = @UserId OR t.DestinationUserId = @UserId) AND t.TradeStatus = 'Pending' ORDER BY t.TradeDate DESC", this.GetConnection()))
-            {
-                command.Parameters.AddWithValue("@UserId", userId);
-
-                try
-                {
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var sourceUser = new User(
-                                reader.GetString(reader.GetOrdinal("SourceUsername")));
-                            sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
-
-                            var destUser = new User(
-                                reader.GetString(reader.GetOrdinal("DestUsername")));
-                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
-
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("Title")),
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-
-                            var trade = new GameTrade(sourceUser, destUser, game, reader.GetString(reader.GetOrdinal("TradeDescription")));
-                            trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
-                            trade.SetTradeStatus(reader.GetString(reader.GetOrdinal("TradeStatus")));
-
-                            trades.Add(trade);
-                        }
-                    }
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-
-            return trades;
-        }
-
-        public List<GameTrade> GetTradeHistory(int userId)
-        {
-            var trades = new List<GameTrade>();
-
-            using (var command = new SqlCommand(@" SELECT t.TradeId, t.TradeDate, t.TradeDescription, t.TradeStatus, t.AcceptedBySourceUser, t.AcceptedByDestinationUser, su.UserId as SourceUserId, su.Username as SourceUsername, du.UserId as DestUserId, du.Username as DestUsername, g.GameId, g.Title, g.Price, g.Genre, g.Description FROM GameTrades t JOIN Users su ON t.SourceUserId = su.UserId JOIN Users du ON t.DestinationUserId = du.UserId JOIN Games g ON t.GameId = g.GameId WHERE (t.SourceUserId = @UserId OR t.DestinationUserId = @UserId) AND t.TradeStatus IN ('Completed', 'Declined') ORDER BY t.TradeDate DESC", this.GetConnection()))
-            {
-                command.Parameters.AddWithValue("@UserId", userId);
-
-                try
-                {
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var sourceUser = new User(
-                                reader.GetString(reader.GetOrdinal("SourceUsername")));
-                            sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
-
-                            var destUser = new User(
-                                reader.GetString(reader.GetOrdinal("DestUsername")));
-                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
-
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("Title")),
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-
-                            var trade = new GameTrade(sourceUser, destUser, game, reader.GetString(reader.GetOrdinal("TradeDescription")));
-                            trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
-                            trade.SetTradeStatus(reader.GetString(reader.GetOrdinal("TradeStatus")));
-
-                            trades.Add(trade);
-                        }
-                    }
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-
-            return trades;
-        }
-
-        public List<GameTrade> GetActiveGameTrades()
-        {
-            var currentUser = this.GetCurrentUser();
-            return this.GetActiveGameTrades(currentUser.UserId);
-        }
-
-        public List<GameTrade> GetTradeHistory()
-        {
-            var currentUser = this.GetCurrentUser();
-            return this.GetTradeHistory(currentUser.UserId);
         }
 
         public List<User> GetAllUsers()
@@ -409,42 +224,6 @@ namespace Steampunks.DataLink
             return users;
         }
 
-        public void AcceptTrade(int tradeId)
-        {
-            using (var command = new SqlCommand(@" UPDATE GameTrades SET TradeStatus = 'Completed' WHERE TradeId = @TradeId", this.GetConnection()))
-            {
-                command.Parameters.AddWithValue("@TradeId", tradeId);
-
-                try
-                {
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-        }
-
-        public void DeclineTrade(int tradeId)
-        {
-            using (var command = new SqlCommand(@" UPDATE GameTrades SET TradeStatus = 'Declined' WHERE TradeId = @TradeId", this.GetConnection()))
-            {
-                command.Parameters.AddWithValue("@TradeId", tradeId);
-
-                try
-                {
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-        }
-
         public void AddGameWithItems(string gameTitle, float gamePrice, string genre, string description, params (string Name, float Price, string Description)[] items)
         {
             try
@@ -507,517 +286,6 @@ namespace Steampunks.DataLink
             }
         }
 
-        public async Task<List<Item>> GetAllListingsAsync()
-        {
-            var items = new List<Item>();
-            using (var command = new SqlCommand(@"
-        SELECT i.ItemId, i.ItemName, i.Description, i.Price, i.IsListed,
-               g.GameId, g.Title as GameTitle, g.Price as GamePrice, g.Genre, g.Description as GameDescription
-        FROM Items i
-        JOIN Games g ON i.CorrespondingGameId = g.GameId
-        WHERE i.IsListed = 1", GetConnection()))
-            {
-                try
-                {
-                    await OpenConnectionAsync();
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("GameTitle")),
-                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-                            // Set image path based on game and item ID
-                            string imagePath = this.GetItemImagePath(item);
-                            item.SetImagePath(imagePath);
-                            System.Diagnostics.Debug.WriteLine($"Added listing item {item.ItemId} with image path: {imagePath}");
-
-                            items.Add(item);
-                        }
-                    }
-                }
-                finally
-                {
-                    await CloseConnectionAsync();
-                }
-            }
-
-            return items;
-        }
-
-        public async Task<List<Item>> GetListingsByGameAsync(Game game)
-        {
-            var items = new List<Item>();
-            const string query = @"
-        SELECT 
-            i.ItemId, i.ItemName, i.Price, i.Description, i.IsListed,
-            g.GameId, g.Title as GameTitle, g.Genre, g.Description as GameDescription,
-            g.Price as GamePrice, g.Status as GameStatus
-        FROM Items i
-        JOIN UserInventory ui ON i.ItemId = ui.ItemId
-        JOIN Games g ON ui.GameId = g.GameId
-        WHERE g.GameId = @GameId AND i.IsListed = 1";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@GameId", game.GameId);
-                    await OpenConnectionAsync();
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            var gameObj = new Game(
-                                reader.GetString(reader.GetOrdinal("GameTitle")),
-                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription"))
-                            );
-                            gameObj.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            gameObj.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
-
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                gameObj,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-                            items.Add(item);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                await CloseConnectionAsync();
-            }
-
-            return items;
-        }
-
-
-        public async Task AddListingAsync(Item item)
-        {
-            using (var command = new SqlCommand(@"
-        UPDATE Items 
-        SET IsListed = 1, Price = @Price
-        WHERE ItemId = @ItemId", GetConnection()))
-            {
-                command.Parameters.AddWithValue("@ItemId", item.ItemId);
-                command.Parameters.AddWithValue("@Price", item.Price);
-
-                try
-                {
-                    await OpenConnectionAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-                finally
-                {
-                    await CloseConnectionAsync();
-                }
-            }
-        }
-
-
-        public async Task RemoveListingAsync(Item item)
-        {
-            using (var command = new SqlCommand(@"
-        UPDATE Items 
-        SET IsListed = 0
-        WHERE ItemId = @ItemId", GetConnection()))
-            {
-                command.Parameters.AddWithValue("@ItemId", item.ItemId);
-
-                try
-                {
-                    await OpenConnectionAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-                finally
-                {
-                    await CloseConnectionAsync();
-                }
-            }
-        }
-
-        public async Task UpdateListingAsync(Item item)
-        {
-            using (var command = new SqlCommand(@"
-        UPDATE Items 
-        SET Price = @Price
-        WHERE ItemId = @ItemId", GetConnection()))
-            {
-                command.Parameters.AddWithValue("@ItemId", item.ItemId);
-                command.Parameters.AddWithValue("@Price", item.Price);
-
-                try
-                {
-                    await OpenConnectionAsync();
-                    await command.ExecuteNonQueryAsync();
-                }
-                finally
-                {
-                    await CloseConnectionAsync();
-                }
-            }
-        }
-
-
-        public List<Item> GetInventoryItems(Game game)
-        {
-            var items = new List<Item>();
-            const string query = @"
-                SELECT 
-                    i.ItemId,
-                    i.ItemName,
-                    i.Price,
-                    i.Description,
-                    i.IsListed
-                FROM Items i
-                JOIN UserInventory ui ON i.ItemId = ui.ItemId
-                WHERE ui.GameId = @GameId AND ui.UserId = @UserId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@GameId", game.GameId);
-                    command.Parameters.AddWithValue("@UserId", this.GetCurrentUser().UserId);
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-                            items.Add(item);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-
-            return items;
-        }
-
-        public List<Item> GetAllInventoryItems(User user)
-        {
-            var items = new List<Item>();
-            const string query = @"
-                SELECT 
-                    i.ItemId,
-                    i.ItemName,
-                    i.Price,
-                    i.Description,
-                    i.IsListed,
-                    g.GameId,
-                    g.Title as GameTitle,
-                    g.Genre,
-                    g.Description as GameDescription,
-                    g.Price as GamePrice,
-                    g.Status as GameStatus
-                FROM Items i
-                JOIN UserInventory ui ON i.ItemId = ui.ItemId
-                JOIN Games g ON ui.GameId = g.GameId
-                WHERE ui.UserId = @UserId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@UserId", user.UserId);
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("GameTitle")),
-                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
-
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-                            items.Add(item);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-
-            return items;
-        }
-
-        public void AddInventoryItem(Game game, Item item, User user)
-        {
-            const string query = @"
-                INSERT INTO UserInventory (UserId, GameId, ItemId)
-                VALUES (@UserId, @GameId, @ItemId)";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@UserId", user.UserId);
-                    command.Parameters.AddWithValue("@GameId", game.GameId);
-                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-        }
-
-        public void RemoveInventoryItem(Game game, Item item, User user)
-        {
-            const string query = @"
-                DELETE FROM UserInventory 
-                WHERE UserId = @UserId AND GameId = @GameId AND ItemId = @ItemId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@UserId", user.UserId);
-                    command.Parameters.AddWithValue("@GameId", game.GameId);
-                    command.Parameters.AddWithValue("@ItemId", item.ItemId);
-                    this.OpenConnection();
-                    command.ExecuteNonQuery();
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-        }
-
-        public async Task<List<Game>> GetGamesAsync()
-        {
-            var games = new List<Game>();
-            const string query = @"
-        SELECT 
-            GameId,
-            Title,
-            Price,
-            Genre,
-            Description,
-            Status
-        FROM Games
-        ORDER BY Title";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    await OpenConnectionAsync();
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("Title")),
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("Status")));
-                            games.Add(game);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-
-            return games;
-        }
-
-        public async Task<Game> GetGameByIdAsync(int gameId)
-        {
-            const string query = @"
-        SELECT 
-            GameId,
-            Title,
-            Price,
-            Genre,
-            Description,
-            Status
-        FROM Games
-        WHERE GameId = @GameId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@GameId", gameId);
-                    await OpenConnectionAsync();
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("Title")),
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("Status")));
-                            return game;
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-
-            return null;
-        }
-
-        public List<Item> GetUserInventory(int userId)
-        {
-            var items = new List<Item>();
-            const string query = @"
-                SELECT 
-                    i.ItemId,
-                    i.ItemName,
-                    i.Price,
-                    i.Description,
-                    i.IsListed,
-                    g.GameId,
-                    g.Title as GameTitle,
-                    g.Genre,
-                    g.Description as GameDescription,
-                    g.Price as GamePrice,
-                    g.Status as GameStatus
-                FROM Items i
-                JOIN Games g ON i.CorrespondingGameId = g.GameId
-                JOIN UserInventory ui ON i.ItemId = ui.ItemId AND g.GameId = ui.GameId
-                WHERE ui.UserId = @UserId
-                ORDER BY g.Title, i.Price";
-
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"Executing GetUserInventory query for userId: {userId}");
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@UserId", userId);
-                    this.OpenConnection();
-                    System.Diagnostics.Debug.WriteLine("Connection opened successfully");
-
-                    using (var reader = command.ExecuteReader())
-                    {
-                        System.Diagnostics.Debug.WriteLine("Query executed successfully");
-                        while (reader.Read())
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Found item: {reader.GetString(reader.GetOrdinal("ItemName"))}");
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("GameTitle")),
-                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
-
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
-
-                            // Set image path based on game and item name
-                            string imagePath = this.GetItemImagePath(item);
-                            item.SetImagePath(imagePath);
-
-                            items.Add(item);
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"Total items found: {items.Count}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
-
-                throw;
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-
-            return items;
-        }
-
-        public void AddToUserInventory(int userId, int itemId, int gameId)
-        {
-            this.ExecuteStoredProcedure(
-                "sp_AddToUserInventory",
-                new SqlParameter("@UserId", userId),
-                new SqlParameter("@ItemId", itemId),
-                new SqlParameter("@GameId", gameId)
-            );
-        }
-
-        public void RemoveFromUserInventory(int userId, int itemId, int gameId)
-        {
-            this.ExecuteStoredProcedure(
-                "sp_RemoveFromUserInventory",
-                new SqlParameter("@UserId", userId),
-                new SqlParameter("@ItemId", itemId),
-                new SqlParameter("@GameId", gameId)
-            );
-        }
-
         public void TestDatabaseData()
         {
             try
@@ -1067,83 +335,6 @@ namespace Steampunks.DataLink
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error in TestDatabaseData: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
-
-                throw;
-            }
-        }
-
-        public void CheckDatabaseState()
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("\n=== Database State Check ===");
-                using (var connection = new SqlConnection(this.connectionString))
-                {
-                    connection.Open();
-
-                    // Check Users
-                    using (var command = new SqlCommand("SELECT UserId, Username FROM Users", connection))
-                    {
-                        using (var reader = command.ExecuteReader())
-                        {
-                            System.Diagnostics.Debug.WriteLine("\nUsers:");
-                            while (reader.Read())
-                            {
-                                System.Diagnostics.Debug.WriteLine($"User {reader.GetInt32(0)}: {reader.GetString(1)}");
-                            }
-                        }
-                    }
-
-                    // Check Games
-                    using (var command = new SqlCommand("SELECT GameId, Title FROM Games", connection))
-                    {
-                        using (var reader = command.ExecuteReader())
-                        {
-                            System.Diagnostics.Debug.WriteLine("\nGames:");
-                            while (reader.Read())
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Game {reader.GetInt32(0)}: {reader.GetString(1)}");
-                            }
-                        }
-                    }
-
-                    // Check Items
-                    using (var command = new SqlCommand("SELECT ItemId, ItemName, CorrespondingGameId FROM Items", connection))
-                    {
-                        using (var reader = command.ExecuteReader())
-                        {
-                            System.Diagnostics.Debug.WriteLine("\nItems:");
-                            while (reader.Read())
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Item {reader.GetInt32(0)}: {reader.GetString(1)} (GameId: {reader.GetInt32(2)})");
-                            }
-                        }
-                    }
-
-                    // Check UserInventory
-                    using (var command = new SqlCommand(@"SELECT ui.UserId, ui.GameId, ui.ItemId, u.Username, g.Title as GameTitle, i.ItemName  FROM UserInventory ui JOIN Users u ON ui.UserId = u.UserId JOIN Games g ON ui.GameId = g.GameId JOIN Items i ON ui.ItemId = i.ItemId", connection))
-                    {
-                        using (var reader = command.ExecuteReader())
-                        {
-                            System.Diagnostics.Debug.WriteLine("\nUserInventory:");
-                            while (reader.Read())
-                            {
-                                System.Diagnostics.Debug.WriteLine($"User {reader.GetString(3)} has {reader.GetString(5)} from {reader.GetString(4)}");
-                            }
-                        }
-                    }
-                }
-
-                System.Diagnostics.Debug.WriteLine("\n=== End Database State Check ===\n");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error checking database state: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
@@ -1469,126 +660,6 @@ namespace Steampunks.DataLink
             return trades;
         }
 
-        public void TransferItem(int itemId, int fromUserId, int toUserId)
-        {
-            const string query = @"
-                UPDATE UserInventory
-                SET UserId = @ToUserId
-                WHERE ItemId = @ItemId AND UserId = @FromUserId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@ItemId", itemId);
-                    command.Parameters.AddWithValue("@FromUserId", fromUserId);
-                    command.Parameters.AddWithValue("@ToUserId", toUserId);
-                    this.OpenConnection();
-                    int rowsAffected = command.ExecuteNonQuery();
-                    if (rowsAffected == 0)
-                    {
-                        throw new Exception($"Failed to transfer item {itemId} from user {fromUserId} to user {toUserId}");
-                    }
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-        }
-
-        public User? GetUserById(int userId)
-        {
-            const string query = @"
-                SELECT UserId, Username, WalletBalance, Points, IsDeveloper
-                FROM Users
-                WHERE UserId = @UserId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@UserId", userId);
-                    this.OpenConnection();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            var user = new User(reader.GetString(reader.GetOrdinal("Username")));
-                            user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
-                            return user;
-                        }
-
-                        return null;
-                    }
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-        }
-
-        public bool UpdateUser(User user)
-        {
-            const string query = @"
-                UPDATE Users
-                SET Username = @Username,
-                    WalletBalance = @WalletBalance,
-                    Points = @PointBalance,
-                    IsDeveloper = @IsDeveloper
-                WHERE UserId = @UserId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@UserId", user.UserId);
-                    command.Parameters.AddWithValue("@Username", user.Username);
-                    command.Parameters.AddWithValue("@WalletBalance", user.WalletBalance);
-                    command.Parameters.AddWithValue("@PointBalance", user.PointBalance);
-                    command.Parameters.AddWithValue("@IsDeveloper", user.IsDeveloper);
-                    this.OpenConnection();
-                    int rowsAffected = command.ExecuteNonQuery();
-                    return rowsAffected > 0;
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-        }
-
-        public bool UpdateGame(Game game)
-        {
-            const string query = @"
-                UPDATE Games
-                SET Title = @Title,
-                    Price = @Price,
-                    Genre = @Genre,
-                    Description = @Description
-                WHERE GameId = @GameId";
-
-            try
-            {
-                using (var command = new SqlCommand(query, this.GetConnection()))
-                {
-                    command.Parameters.AddWithValue("@GameId", game.GameId);
-                    command.Parameters.AddWithValue("@Title", game.Title);
-                    command.Parameters.AddWithValue("@Price", game.Price);
-                    command.Parameters.AddWithValue("@Genre", game.Genre);
-                    command.Parameters.AddWithValue("@Description", game.Description);
-                    this.OpenConnection();
-                    int rowsAffected = command.ExecuteNonQuery();
-                    return rowsAffected > 0;
-                }
-            }
-            finally
-            {
-                this.CloseConnection();
-            }
-        }
-
         public List<Item> GetUserItems(int userId)
         {
             var items = new List<Item>();
@@ -1648,138 +719,6 @@ namespace Steampunks.DataLink
             return items;
         }
 
-        public void UpdateItemTrade(ItemTrade trade)
-        {
-            const string updateTradeQuery = @"
-                UPDATE ItemTrades 
-                SET TradeStatus = @TradeStatus,
-                    AcceptedByDestinationUser = @AcceptedByDestinationUser
-                WHERE TradeId = @TradeId";
-
-            const string getTradeItemsQuery = @"
-                SELECT ItemId, IsSourceUserItem
-                FROM ItemTradeDetails
-                WHERE TradeId = @TradeId";
-
-            using (var connection = new SqlConnection(this.connectionString))
-            {
-                connection.Open();
-                using (var transaction = connection.BeginTransaction())
-                {
-                    try
-                    {
-                        // Update the trade status and destination user acceptance
-                        using (var command = new SqlCommand(updateTradeQuery, connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@TradeId", trade.TradeId);
-
-                            // If destination user accepts, mark trade as completed since source user already accepted
-                            command.Parameters.AddWithValue("@TradeStatus", trade.AcceptedByDestinationUser ? "Completed" : trade.TradeStatus);
-                            command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
-                            command.ExecuteNonQuery();
-                        }
-
-                        // If the destination user accepted, transfer the items
-                        if (trade.AcceptedByDestinationUser)
-                        {
-                            // Get all items involved in the trade
-                            var itemsToTransfer = new List<(int ItemId, bool IsSourceUserItem)>();
-                            using (var command = new SqlCommand(getTradeItemsQuery, connection, transaction))
-                            {
-                                command.Parameters.AddWithValue("@TradeId", trade.TradeId);
-                                using (var reader = command.ExecuteReader())
-                                {
-                                    while (reader.Read())
-                                    {
-                                        itemsToTransfer.Add((
-                                            reader.GetInt32(reader.GetOrdinal("ItemId")),
-                                            reader.GetBoolean(reader.GetOrdinal("IsSourceUserItem"))
-                                        ));
-                                    }
-                                }
-                            }
-
-                            // Transfer each item
-                            foreach (var (itemId, isSourceUserItem) in itemsToTransfer)
-                            {
-                                int fromUserId = isSourceUserItem ? trade.SourceUser.UserId : trade.DestinationUser.UserId;
-                                int toUserId = isSourceUserItem ? trade.DestinationUser.UserId : trade.SourceUser.UserId;
-
-                                const string transferQuery = @"
-                                    UPDATE UserInventory
-                                    SET UserId = @ToUserId
-                                    WHERE ItemId = @ItemId AND UserId = @FromUserId";
-
-                                using (var command = new SqlCommand(transferQuery, connection, transaction))
-                                {
-                                    command.Parameters.AddWithValue("@ItemId", itemId);
-                                    command.Parameters.AddWithValue("@FromUserId", fromUserId);
-                                    command.Parameters.AddWithValue("@ToUserId", toUserId);
-                                    int rowsAffected = command.ExecuteNonQuery();
-                                    if (rowsAffected == 0)
-                                    {
-                                        throw new Exception($"Failed to transfer item {itemId} from user {fromUserId} to user {toUserId}");
-                                    }
-
-                                    System.Diagnostics.Debug.WriteLine($"Successfully transferred item {itemId} from user {fromUserId} to user {toUserId}");
-                                }
-                            }
-                        }
-
-                        transaction.Commit();
-                        System.Diagnostics.Debug.WriteLine($"Trade {trade.TradeId} updated successfully. Status: {trade.TradeStatus}");
-                    }
-                    catch (Exception ex)
-                    {
-                        try
-                        {
-                            transaction.Rollback();
-                        }
-                        catch (Exception rollbackEx)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error rolling back transaction: {rollbackEx.Message}");
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
-                        throw;
-                    }
-                }
-            }
-        }
-
-        private void InsertTestGames()
-        {
-            var testGames = new List<(string title, float price, string genre, string description)>
-            {
-                ("Counter-Strike 2", 0.0f, "FPS", "The next evolution of Counter-Strike"),
-                ("Dota 2", 0.0f, "MOBA", "A complex game of strategy and teamwork"),
-                ("Red Dead Redemption 2", 59.99f, "Action Adventure", "Epic tale of life in America's unforgiving heartland"),
-                ("The Witcher 3", 39.99f, "RPG", "An epic role-playing game set in a vast open world"),
-                ("Cyberpunk 2077", 59.99f, "RPG", "An open-world action-adventure story set in Night City"),
-            };
-
-            using (var command = new SqlCommand(@" INSERT INTO Games (Title, Price, Genre, Description, Status) VALUES (@Title, @Price, @Genre, @Description, 'Available')", this.GetConnection()))
-            {
-                try
-                {
-                    this.OpenConnection();
-                    foreach (var game in testGames)
-                    {
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue("@Title", game.title);
-                        command.Parameters.AddWithValue("@Price", game.price);
-                        command.Parameters.AddWithValue("@Genre", game.genre);
-                        command.Parameters.AddWithValue("@Description", game.description);
-                        command.ExecuteNonQuery();
-                    }
-                }
-                finally
-                {
-                    this.CloseConnection();
-                }
-            }
-        }
-
         public void InsertTestUsers()
         {
             var testUsers = new List<string>
@@ -1821,7 +760,7 @@ namespace Steampunks.DataLink
                     _ => item.Game.Title.ToLower().Replace(" ", string.Empty).Replace(":", string.Empty)
                 };
 
-                // Return a path to the image based on the ItemId 
+                // Return a path to the image based on the ItemId
                 var path = $"ms-appx:///Assets/img/games/{gameFolder}/{item.ItemId}.png";
                 System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
@@ -1833,6 +772,129 @@ namespace Steampunks.DataLink
                 return "ms-appx:///Assets/img/games/default-item.png";
             }
         }
+
+        public void CheckDatabaseState()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("\n=== Database State Check ===");
+                using (var connection = new SqlConnection(this.connectionString))
+                {
+                    connection.Open();
+
+                    // Check Users
+                    using (var command = new SqlCommand("SELECT UserId, Username FROM Users", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nUsers:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"User {reader.GetInt32(0)}: {reader.GetString(1)}");
+                            }
+                        }
+                    }
+
+                    // Check Games
+                    using (var command = new SqlCommand("SELECT GameId, Title FROM Games", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nGames:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Game {reader.GetInt32(0)}: {reader.GetString(1)}");
+                            }
+                        }
+                    }
+
+                    // Check Items
+                    using (var command = new SqlCommand("SELECT ItemId, ItemName, CorrespondingGameId FROM Items", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nItems:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Item {reader.GetInt32(0)}: {reader.GetString(1)} (GameId: {reader.GetInt32(2)})");
+                            }
+                        }
+                    }
+
+                    // Check UserInventory
+                    using (var command = new SqlCommand(@"SELECT ui.UserId, ui.GameId, ui.ItemId, u.Username, g.Title as GameTitle, i.ItemName  FROM UserInventory ui JOIN Users u ON ui.UserId = u.UserId JOIN Games g ON ui.GameId = g.GameId JOIN Items i ON ui.ItemId = i.ItemId", connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("\nUserInventory:");
+                            while (reader.Read())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"User {reader.GetString(3)} has {reader.GetString(5)} from {reader.GetString(4)}");
+                            }
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("\n=== End Database State Check ===\n");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking database state: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+
+                throw;
+            }
+        }
+
+        public void DisposeConnection()
+        {
+            if (this.connection != null)
+            {
+                if (this.connection.State != ConnectionState.Closed)
+                {
+                    this.connection.Close();
+                }
+
+                this.connection.Dispose();
+                this.connection = null;
+            }
+        }
+
+        private void InsertTestGames()
+        {
+            var testGames = new List<(string title, float price, string genre, string description)>
+            {
+                ("Counter-Strike 2", 0.0f, "FPS", "The next evolution of Counter-Strike"),
+                ("Dota 2", 0.0f, "MOBA", "A complex game of strategy and teamwork"),
+                ("Red Dead Redemption 2", 59.99f, "Action Adventure", "Epic tale of life in America's unforgiving heartland"),
+                ("The Witcher 3", 39.99f, "RPG", "An epic role-playing game set in a vast open world"),
+                ("Cyberpunk 2077", 59.99f, "RPG", "An open-world action-adventure story set in Night City"),
+            };
+
+            using (var command = new SqlCommand(@" INSERT INTO Games (Title, Price, Genre, Description, Status) VALUES (@Title, @Price, @Genre, @Description, 'Available')", this.GetConnection()))
+            {
+                try
+                {
+                    this.OpenConnection();
+                    foreach (var game in testGames)
+                    {
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("@Title", game.title);
+                        command.Parameters.AddWithValue("@Price", game.price);
+                        command.Parameters.AddWithValue("@Genre", game.genre);
+                        command.Parameters.AddWithValue("@Description", game.description);
+                        command.ExecuteNonQuery();
+                    }
+                }
+                finally
+                {
+                    this.CloseConnection();
+                }
+            }
+        }
     }
 }
-
