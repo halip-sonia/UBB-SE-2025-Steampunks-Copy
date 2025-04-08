@@ -42,8 +42,15 @@ namespace Steampunks.Views
             this.ViewModel = new InventoryViewModel(inventoryService);
             this.DataContext = this;
 
+            this.Loaded += InventoryPage_Loaded;
             // Subscribe to user selection changes.
             this.UserComboBox.SelectionChanged += OnUserSelectionChanged;
+        }
+
+        private async void InventoryPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Call the asynchronous initialization method.
+            await this.ViewModel.InitializeAsync();
         }
 
         /// <summary>
