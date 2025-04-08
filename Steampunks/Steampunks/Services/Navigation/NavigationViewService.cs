@@ -6,18 +6,27 @@ namespace Steampunks.Services
 {
     using Microsoft.UI.Xaml.Controls;
 
+    /// <summary>
+    /// A service that integrates the NavigationView UI with navigation logic.
+    /// </summary>
     public class NavigationViewService : INavigationViewService
     {
         private readonly INavigationService navigationService;
         private NavigationView? navigationView;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NavigationViewService"/> class.
+        /// </summary>
+        /// <param name="navigationService">The service used for navigation.</param>
         public NavigationViewService(INavigationService navigationService)
         {
             this.navigationService = navigationService;
         }
 
+        /// <inheritdoc/>
         public INavigationService NavigationService => this.navigationService;
 
+        /// <inheritdoc/>
         public NavigationView? NavigationView
         {
             get => this.navigationView;
@@ -29,11 +38,13 @@ namespace Steampunks.Services
             }
         }
 
+        /// <inheritdoc/>
         public void Initialize(NavigationView navigationView)
         {
             this.NavigationView = navigationView;
         }
 
+        /// <inheritdoc/>
         public void UnregisterEvents()
         {
             if (this.navigationView != null)
