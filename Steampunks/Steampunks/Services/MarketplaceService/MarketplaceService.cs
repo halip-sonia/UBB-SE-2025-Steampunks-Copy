@@ -19,7 +19,7 @@ namespace Steampunks.Services.MarketplaceService
     {
         private readonly IMarketplaceRepository marketplaceRepository;
         private readonly DatabaseConnector dataBaseConnector;
-        private User? currentUser;
+        private User currentUser;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MarketplaceService"/> class.
