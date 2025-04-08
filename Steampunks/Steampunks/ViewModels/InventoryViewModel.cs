@@ -40,8 +40,14 @@ namespace Steampunks.ViewModels
             this.availableUsers = new ObservableCollection<User>();
 
             // Load users and initialize data.
-            this.LoadUsersAsync().GetAwaiter().GetResult();
+            //this.LoadUsersAsync().GetAwaiter().GetResult();
         }
+
+        public async Task InitializeAsync()
+        {
+            await this.LoadUsersAsync();
+        }
+
 
         /// <inheritdoc/>
         public event PropertyChangedEventHandler PropertyChanged;
