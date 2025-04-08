@@ -14,12 +14,6 @@ namespace Steampunks.Repository.Trade
     public interface ITradeRepository
     {
         /// <summary>
-        /// Closes the database connection asynchronously.
-        /// </summary>
-        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task CloseConnectionAsync();
-
-        /// <summary>
         /// Adds the trade to the database asynchronously.
         /// </summary>
         /// <param name="trade">the trade to be added.</param>
@@ -52,12 +46,6 @@ namespace Steampunks.Repository.Trade
         /// <param name="userId">The userID.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         Task<List<Item>> GetUserInventoryAsync(int userId);
-
-        /// <summary>
-        /// Opens the connection to the database asynchronously.
-        /// </summary>
-        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
-        Task OpenConnectionAsync();
 
         /// <summary>
         /// Performs the item trade between the users and persists the changes to the database asynchronously.

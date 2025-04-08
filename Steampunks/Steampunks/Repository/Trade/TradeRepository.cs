@@ -9,6 +9,7 @@ namespace Steampunks.Repository.Trade
     using System.Data;
     using System.Threading.Tasks;
     using Microsoft.Data.SqlClient;
+    using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
     using Steampunks.Utils;
 
@@ -17,38 +18,14 @@ namespace Steampunks.Repository.Trade
     /// </summary>
     public class TradeRepository : ITradeRepository
     {
-        private readonly string connectionString;
-        private SqlConnection? connection;
+        private DatabaseConnector? dataBaseConnector;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TradeRepository"/> class.
         /// </summary>
         public TradeRepository()
         {
-            this.connectionString = Configuration.CONNECTIONSTRINGILINCA;
-        }
-
-        /// <inheritdoc/>
-        public async Task OpenConnectionAsync()
-        {
-            if (this.connection == null)
-            {
-                this.connection = new SqlConnection(this.connectionString);
-            }
-
-            if (this.connection.State != ConnectionState.Open)
-            {
-                await this.connection.OpenAsync().ConfigureAwait(false);
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task CloseConnectionAsync()
-        {
-            if (this.connection != null && this.connection.State != ConnectionState.Closed)
-            {
-                await Task.Run(() => this.connection.Close());
-            }
+            this.dataBaseConnector = new DatabaseConnector();
         }
 
         /// <inheritdoc/>
@@ -75,12 +52,12 @@ namespace Steampunks.Repository.Trade
                 JOIN Games g ON i.CorrespondingGameId = g.GameId
                 WHERE td.TradeId = @TradeId";
 
-            try
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
-                await this.OpenConnectionAsync();
+                await connection.OpenAsync();
 
                 // First, get all trades
-                using (var command = new SqlCommand(tradesQuery, this.GetConnection()))
+                using (var command = new SqlCommand(tradesQuery, connection))
                 {
                     command.Parameters.AddWithValue("@UserId", userId);
                     using (var reader = await command.ExecuteReaderAsync())
@@ -129,7 +106,7 @@ namespace Steampunks.Repository.Trade
                 // Then, for each trade, get its items
                 foreach (var trade in trades)
                 {
-                    using (var command = new SqlCommand(itemsQuery, this.GetConnection()))
+                    using (var command = new SqlCommand(itemsQuery, connection))
                     {
                         command.Parameters.AddWithValue("@TradeId", trade.TradeId);
                         using (var reader = await command.ExecuteReaderAsync())
@@ -165,10 +142,6 @@ namespace Steampunks.Repository.Trade
                     }
                 }
             }
-            finally
-            {
-                await this.CloseConnectionAsync();
-            }
 
             return trades;
         }
@@ -197,12 +170,12 @@ namespace Steampunks.Repository.Trade
                 JOIN Games g ON i.CorrespondingGameId = g.GameId
                 WHERE td.TradeId = @TradeId";
 
-            try
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
-                await this.OpenConnectionAsync();
+                await connection.OpenAsync();
 
                 // First, get all trades
-                using (var command = new SqlCommand(tradesQuery, this.GetConnection()))
+                using (var command = new SqlCommand(tradesQuery, connection))
                 {
                     command.Parameters.AddWithValue("@UserId", userId);
                     using (var reader = await command.ExecuteReaderAsync())
@@ -250,7 +223,7 @@ namespace Steampunks.Repository.Trade
                 // Then, for each trade, get its items
                 foreach (var trade in trades)
                 {
-                    using (var command = new SqlCommand(itemsQuery, this.GetConnection()))
+                    using (var command = new SqlCommand(itemsQuery, connection))
                     {
                         command.Parameters.AddWithValue("@TradeId", trade.TradeId);
                         using (var reader = await command.ExecuteReaderAsync())
@@ -288,10 +261,6 @@ namespace Steampunks.Repository.Trade
                     }
                 }
             }
-            finally
-            {
-                await this.CloseConnectionAsync();
-            }
 
             return trades;
         }
@@ -308,16 +277,16 @@ namespace Steampunks.Repository.Trade
                 INSERT INTO ItemTradeDetails (TradeId, ItemId, IsSourceUserItem)
                 VALUES (@TradeId, @ItemId, @IsSourceUserItem)";
 
-            try
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
-                await this.OpenConnectionAsync();
-                using (var transaction = this.GetConnection().BeginTransaction())
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction())
                 {
                     try
                     {
                         // Insert trade (note that AcceptedBySourceUser is set to 1)
                         int tradeId;
-                        using (var command = new SqlCommand(insertTrade, this.GetConnection(), transaction))
+                        using (var command = new SqlCommand(insertTrade, connection, transaction))
                         {
                             command.Parameters.AddWithValue("@SourceUserId", trade.SourceUser.UserId);
                             command.Parameters.AddWithValue("@DestinationUserId", trade.DestinationUser.UserId);
@@ -338,7 +307,7 @@ namespace Steampunks.Repository.Trade
                         // Insert source user items
                         foreach (var item in trade.SourceUserItems)
                         {
-                            using (var command = new SqlCommand(insertTradeDetails, this.GetConnection(), transaction))
+                            using (var command = new SqlCommand(insertTradeDetails, connection, transaction))
                             {
                                 command.Parameters.AddWithValue("@TradeId", tradeId);
                                 command.Parameters.AddWithValue("@ItemId", item.ItemId);
@@ -350,7 +319,7 @@ namespace Steampunks.Repository.Trade
                         // Insert destination user items
                         foreach (var item in trade.DestinationUserItems)
                         {
-                            using (var command = new SqlCommand(insertTradeDetails, this.GetConnection(), transaction))
+                            using (var command = new SqlCommand(insertTradeDetails, connection, transaction))
                             {
                                 command.Parameters.AddWithValue("@TradeId", tradeId);
                                 command.Parameters.AddWithValue("@ItemId", item.ItemId);
@@ -369,10 +338,6 @@ namespace Steampunks.Repository.Trade
                     }
                 }
             }
-            finally
-            {
-                await this.CloseConnectionAsync();
-            }
         }
 
         /// <inheritdoc/>
@@ -389,7 +354,7 @@ namespace Steampunks.Repository.Trade
                 FROM ItemTradeDetails
                 WHERE TradeId = @TradeId";
 
-            using (var connection = new SqlConnection(this.connectionString))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
                 await connection.OpenAsync();
                 using (var transaction = connection.BeginTransaction())
@@ -482,14 +447,14 @@ namespace Steampunks.Repository.Trade
                 SET UserId = @ToUserId
                 WHERE ItemId = @ItemId AND UserId = @FromUserId";
 
-            try
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
-                using (var command = new SqlCommand(query, this.GetConnection()))
+                await connection.OpenAsync();
+                using (var command = new SqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@ItemId", itemId);
                     command.Parameters.AddWithValue("@FromUserId", fromUserId);
                     command.Parameters.AddWithValue("@ToUserId", toUserId);
-                    await this.OpenConnectionAsync();
                     int rowsAffected = await command.ExecuteNonQueryAsync();
                     if (rowsAffected == 0)
                     {
@@ -497,20 +462,16 @@ namespace Steampunks.Repository.Trade
                     }
                 }
             }
-            finally
-            {
-                await this.CloseConnectionAsync();
-            }
         }
 
         /// <inheritdoc/>
         public async Task<User?> GetCurrentUserAsync()
         {
-            using (var command = new SqlCommand("SELECT TOP 1 UserId, Username FROM Users", this.GetConnection()))
+            using (var connection = this.dataBaseConnector.GetNewConnection())
             {
-                try
+                await connection.OpenAsync();
+                using (var command = new SqlCommand("SELECT TOP 1 UserId, Username FROM Users", connection))
                 {
-                    await this.OpenConnectionAsync();
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
@@ -522,10 +483,6 @@ namespace Steampunks.Repository.Trade
 
                         return null;
                     }
-                }
-                finally
-                {
-                    await this.CloseConnectionAsync();
                 }
             }
         }
@@ -555,43 +512,46 @@ namespace Steampunks.Repository.Trade
 
             try
             {
-                System.Diagnostics.Debug.WriteLine($"Executing GetUserInventory query for userId: {userId}");
-                using (var command = new SqlCommand(query, this.GetConnection()))
+                using (var connection = this.dataBaseConnector.GetNewConnection())
                 {
-                    command.Parameters.AddWithValue("@UserId", userId);
-                    await this.OpenConnectionAsync();
-                    System.Diagnostics.Debug.WriteLine("Connection opened successfully");
-
-                    using (var reader = await command.ExecuteReaderAsync())
+                    await connection.OpenAsync();
+                    System.Diagnostics.Debug.WriteLine($"Executing GetUserInventory query for userId: {userId}");
+                    using (var command = new SqlCommand(query, connection))
                     {
-                        System.Diagnostics.Debug.WriteLine("Query executed successfully");
-                        while (await reader.ReadAsync())
+                        command.Parameters.AddWithValue("@UserId", userId);
+                        System.Diagnostics.Debug.WriteLine("Connection opened successfully");
+
+                        using (var reader = await command.ExecuteReaderAsync())
                         {
-                            System.Diagnostics.Debug.WriteLine($"Found item: {reader.GetString(reader.GetOrdinal("ItemName"))}");
-                            var game = new Game(
-                                reader.GetString(reader.GetOrdinal("GameTitle")),
-                                (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription")));
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+                            System.Diagnostics.Debug.WriteLine("Query executed successfully");
+                            while (await reader.ReadAsync())
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Found item: {reader.GetString(reader.GetOrdinal("ItemName"))}");
+                                var game = new Game(
+                                    reader.GetString(reader.GetOrdinal("GameTitle")),
+                                    (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
+                                    reader.GetString(reader.GetOrdinal("Genre")),
+                                    reader.GetString(reader.GetOrdinal("GameDescription")));
+                                game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                                game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
 
-                            var item = new Item(
-                                reader.GetString(reader.GetOrdinal("ItemName")),
-                                game,
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description")));
-                            item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
-                            item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
+                                var item = new Item(
+                                    reader.GetString(reader.GetOrdinal("ItemName")),
+                                    game,
+                                    (float)reader.GetDouble(reader.GetOrdinal("Price")),
+                                    reader.GetString(reader.GetOrdinal("Description")));
+                                item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
+                                item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
 
-                            // Set image path based on game and item name
-                            string imagePath = this.GetItemImagePath(item);
-                            item.SetImagePath(imagePath);
+                                // Set image path based on game and item name
+                                string imagePath = this.GetItemImagePath(item);
+                                item.SetImagePath(imagePath);
 
-                            items.Add(item);
+                                items.Add(item);
+                            }
+
+                            System.Diagnostics.Debug.WriteLine($"Total items found: {items.Count}");
                         }
-
-                        System.Diagnostics.Debug.WriteLine($"Total items found: {items.Count}");
                     }
                 }
             }
@@ -605,10 +565,6 @@ namespace Steampunks.Repository.Trade
                 }
 
                 throw;
-            }
-            finally
-            {
-                await this.CloseConnectionAsync();
             }
 
             return items;
@@ -638,16 +594,6 @@ namespace Steampunks.Repository.Trade
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 return "ms-appx:///Assets/img/games/default-item.png";
             }
-        }
-
-        private SqlConnection GetConnection()
-        {
-            if (this.connection == null || this.connection.State == ConnectionState.Closed)
-            {
-                this.connection = new SqlConnection(this.connectionString);
-            }
-
-            return this.connection;
         }
     }
 }

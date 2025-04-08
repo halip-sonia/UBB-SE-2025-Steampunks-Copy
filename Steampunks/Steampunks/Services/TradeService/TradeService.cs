@@ -2,13 +2,14 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace Steampunks.Services
+namespace Steampunks.Services.TradeService
 {
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Steampunks.Domain.Entities;
     using Steampunks.Repository.Trade;
+    using Steampunks.Services.TradeService;
 
     /// <summary>
     /// Service for trading operations.
@@ -113,6 +114,18 @@ namespace Steampunks.Services
             }
         }
 
+        /// <inheritdoc/>
+        public async Task<User?> GetCurrentUserAsync()
+        {
+            return await this.tradeRepository.GetCurrentUserAsync();
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Item>> GetUserInventoryAsync(int userId)
+        {
+            return await this.tradeRepository.GetUserInventoryAsync(userId);
+        }
+
         private async void CompleteTrade(ItemTrade trade)
         {
             try
@@ -137,18 +150,6 @@ namespace Steampunks.Services
                 System.Diagnostics.Debug.WriteLine($"Error completing trade: {ex.Message}");
                 throw;
             }
-        }
-
-        /// <inheritdoc/>
-        public async Task<User?> GetCurrentUserAsync()
-        {
-            return await this.tradeRepository.GetCurrentUserAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<Item>> GetUserInventoryAsync(int userId)
-        {
-            return await this.tradeRepository.GetUserInventoryAsync(userId);
         }
     }
 }

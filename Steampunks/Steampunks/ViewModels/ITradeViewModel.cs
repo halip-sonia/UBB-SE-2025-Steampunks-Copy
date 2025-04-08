@@ -4,6 +4,7 @@
 
 namespace Steampunks.ViewModels
 {
+    using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.ComponentModel;
     using System.Threading.Tasks;
@@ -129,6 +130,27 @@ namespace Steampunks.ViewModels
         /// <param name="trade">The trade to be declined.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         Task<bool> DeclineTradeAsync(ItemTrade trade);
+
+        /// <summary>
+        /// Calls the function from the service to get the active trades for the specified user asynchronously.
+        /// </summary>
+        /// <param name="userId">The id of the user.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        Task<List<ItemTrade>> GetActiveTradesAsync(int userId);
+
+        /// <summary>
+        /// Calls the function from the service to get the trade history for the specified user asynchronously.
+        /// </summary>
+        /// <param name="userId">id of the user.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        Task<List<ItemTrade>> GetTradeHistoryAsync(int userId);
+
+        /// <summary>
+        /// Calls the function from the service to get the inventory list for the user asynchronously.
+        /// </summary>
+        /// <param name="userId">The userID for which to fetch the inventory.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        Task<List<Item>> GetUserInventoryAsync(int userId);
 
         /// <summary>
         /// Populates the Games list with data from the database.

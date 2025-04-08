@@ -20,7 +20,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.CONNECTIONSTRINGSONIA;
+            this.connectionString = Configuration.CONNECTIONSTRINGILINCA;
         }
 
         public SqlConnection GetConnection()
@@ -31,6 +31,11 @@ namespace Steampunks.DataLink
             }
 
             return this.connection;
+        }
+
+        public SqlConnection GetNewConnection()
+        {
+            return new SqlConnection(this.connectionString);
         }
 
         public void OpenConnection()
