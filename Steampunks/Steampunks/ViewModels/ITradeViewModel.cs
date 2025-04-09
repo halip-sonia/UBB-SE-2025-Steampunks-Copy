@@ -125,6 +125,13 @@ namespace Steampunks.ViewModels
         Task CreateTradeOffer();
 
         /// <summary>
+        /// Calls the function from the service that adds the trade to the database asynchronously.
+        /// </summary>
+        /// <param name="trade">The trade.</param>
+        /// <returns>A <see cref="Task"/> representing the result of the asynchronous operation.</returns>
+        Task CreateTradeAsync(ItemTrade trade);
+
+        /// <summary>
         /// Declines the given trade.
         /// </summary>
         /// <param name="trade">The trade to be declined.</param>
@@ -137,6 +144,24 @@ namespace Steampunks.ViewModels
         /// <param name="userId">The id of the user.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
         Task<List<ItemTrade>> GetActiveTradesAsync(int userId);
+
+        /// <summary>
+        /// Asynchronously retrieves all games from the database.
+        /// </summary>
+        /// <returns>A list of all games.</returns>
+        Task<List<Game>> GetAllGamesAsync();
+
+        /// <summary>
+        /// Calls the functions from the service that asynchronously retrieves all users from the database.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a list of <see cref="User"/> objects.</returns>
+        Task<List<User>> GetAllUsersAsync();
+
+        /// <summary>
+        /// Calls the service function that gets the current user from the database asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the result of the asynchronous operation.</returns>
+        Task<User?> GetCurrentUserAsync();
 
         /// <summary>
         /// Calls the function from the service to get the trade history for the specified user asynchronously.

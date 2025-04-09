@@ -373,7 +373,7 @@ namespace Steampunks.Repository.Trade
                         }
 
                         // If the destination user accepted, transfer the items
-                        if (trade.AcceptedByDestinationUser)
+                        if (trade.AcceptedByDestinationUser && trade.AcceptedBySourceUser)
                         {
                             // Get all items involved in the trade
                             var itemsToTransfer = new List<(int ItemId, bool IsSourceUserItem)>();

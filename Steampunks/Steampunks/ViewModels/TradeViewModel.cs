@@ -645,5 +645,25 @@ namespace Steampunks.ViewModels
                 System.Diagnostics.Debug.WriteLine($"Error loading trade history: {ex.Message}");
             }
         }
+
+        public async Task CreateTradeAsync(ItemTrade trade)
+        {
+            await this.tradeService.CreateTradeAsync(trade);
+        }
+
+        public async Task<List<Game>> GetAllGamesAsync()
+        {
+            return await this.gameService.GetAllGamesAsync();
+        }
+
+        public async Task<List<User>> GetAllUsersAsync()
+        {
+            return await this.userService.GetAllUsersAsync();
+        }
+
+        public async Task<User?> GetCurrentUserAsync()
+        {
+            return await this.tradeService.GetCurrentUserAsync();
+        }
     }
 }
