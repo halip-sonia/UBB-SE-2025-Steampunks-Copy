@@ -20,7 +20,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.CONNECTIONSTRINGDARIUS;
+            this.connectionString = Configuration.CONNECTIONSTRINGILINCA;
         }
 
         public SqlConnection GetConnection()
@@ -55,7 +55,7 @@ namespace Steampunks.DataLink
 
             if (this.connection.State != ConnectionState.Open)
             {
-                await this.connection.OpenAsync();
+                await this.connection.OpenAsync().ConfigureAwait(false);
             }
         }
 
@@ -65,8 +65,6 @@ namespace Steampunks.DataLink
             {
                 this.connection?.Close();
             }
-
-            this.connection = null;
         }
 
         public async Task CloseConnectionAsync()
@@ -75,7 +73,6 @@ namespace Steampunks.DataLink
             {
                 await Task.Run(() => this.connection.Close());
             }
-            this.connection = null;
         }
 
         public List<Game> GetAllGames()
