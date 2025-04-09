@@ -1,97 +1,191 @@
-using System;
-using System.Collections.Generic;
+// <copyright file="ItemTrade.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.Domain.Entities
 {
+    using System;
+    using System.Collections.Generic;
+
+    /// <summary>
+    /// Represents a trade between two users involving items from a specific game.
+    /// </summary>
     public class ItemTrade
     {
-        private int _tradeId;
-        private User _sourceUser;
-        private User _destinationUser;
-        private Game _gameOfTrade;
-        private DateTime _tradeDate;
-        private string _tradeDescription;
-        private string _tradeStatus;
-        private bool _acceptedBySourceUser;
-        private bool _acceptedByDestinationUser;
-        private List<Item> _sourceUserItems;
-        private List<Item> _destinationUserItems;
+        private const string StatusPending = "Pending";
+        private const string StatusCompleted = "Completed";
+        private const string StatusDeclined = "Declined";
 
-        public int TradeId => _tradeId;
-        public User SourceUser => _sourceUser;
-        public User DestinationUser => _destinationUser;
-        public Game GameOfTrade => _gameOfTrade;
-        public DateTime TradeDate => _tradeDate;
-        public string TradeDescription => _tradeDescription;
-        public string TradeStatus => _tradeStatus;
-        public bool AcceptedBySourceUser => _acceptedBySourceUser;
-        public bool AcceptedByDestinationUser => _acceptedByDestinationUser;
-        public IReadOnlyList<Item> SourceUserItems => _sourceUserItems;
-        public IReadOnlyList<Item> DestinationUserItems => _destinationUserItems;
+        private int tradeId;
+        private User sourceUser;
+        private User destinationUser;
+        private Game gameOfTrade;
+        private DateTime tradeDate;
+        private string tradeDescription;
+        private string tradeStatus;
+        private bool acceptedBySourceUser;
+        private bool acceptedByDestinationUser;
+        private List<Item> sourceUserItems;
+        private List<Item> destinationUserItems;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ItemTrade"/> class.
+        /// </summary>
+        /// <param name="sourceUser">The user initiating the trade.</param>
+        /// <param name="destinationUser">The user receiving the trade.</param>
+        /// <param name="gameOfTrade">The game the items belong to.</param>
+        /// <param name="description">The description of the trade.</param>
         public ItemTrade(User sourceUser, User destinationUser, Game gameOfTrade, string description)
         {
-            _sourceUser = sourceUser ?? throw new ArgumentNullException(nameof(sourceUser));
-            _destinationUser = destinationUser ?? throw new ArgumentNullException(nameof(destinationUser));
-            _gameOfTrade = gameOfTrade ?? throw new ArgumentNullException(nameof(gameOfTrade));
-            _tradeDescription = description ?? throw new ArgumentNullException(nameof(description));
-            _tradeDate = DateTime.UtcNow;
-            _tradeStatus = "Pending";
-            _acceptedBySourceUser = false;
-            _acceptedByDestinationUser = false;
-            _sourceUserItems = new List<Item>();
-            _destinationUserItems = new List<Item>();
+            sourceUser = sourceUser ?? throw new ArgumentNullException(nameof(sourceUser));
+            destinationUser = destinationUser ?? throw new ArgumentNullException(nameof(destinationUser));
+            gameOfTrade = gameOfTrade ?? throw new ArgumentNullException(nameof(gameOfTrade));
+            this.tradeDescription = description ?? throw new ArgumentNullException(nameof(description));
+            this.tradeDate = DateTime.UtcNow;
+            this.tradeStatus = StatusPending;
+            this.acceptedBySourceUser = false;
+            this.acceptedByDestinationUser = false;
+            this.sourceUserItems = new List<Item>();
+            this.destinationUserItems = new List<Item>();
+            this.sourceUser = sourceUser;
+            this.destinationUser = destinationUser;
+            this.gameOfTrade = gameOfTrade;
         }
 
+        /// <summary>
+        /// Gets the unique identifier of the trade.
+        /// </summary>
+        public int TradeId => this.tradeId;
+
+        /// <summary>
+        /// Gets the user who initiated the trade.
+        /// </summary>
+        public User SourceUser => this.sourceUser;
+
+        /// <summary>
+        /// Gets the user who received the trade.
+        /// </summary>
+        public User DestinationUser => this.destinationUser;
+
+        /// <summary>
+        /// Gets the game associated with the trade.
+        /// </summary>
+        public Game GameOfTrade => this.gameOfTrade;
+
+        /// <summary>
+        /// Gets the date and time when the trade was created.
+        /// </summary>
+        public DateTime TradeDate => this.tradeDate;
+
+        /// <summary>
+        /// Gets the description of the trade.
+        /// </summary>
+        public string TradeDescription => this.tradeDescription;
+
+        /// <summary>
+        /// Gets the current status of the trade.
+        /// </summary>
+        public string TradeStatus => this.tradeStatus;
+
+        /// <summary>
+        /// Gets a value indicating whether the source user accepted the trade.
+        /// </summary>
+        public bool AcceptedBySourceUser => this.acceptedBySourceUser;
+
+        /// <summary>
+        /// Gets a value indicating whether the destination user accepted the trade.
+        /// </summary>
+        public bool AcceptedByDestinationUser => this.acceptedByDestinationUser;
+
+        /// <summary>
+        /// Gets the list of items offered by the source user.
+        /// </summary>
+        public IReadOnlyList<Item> SourceUserItems => this.sourceUserItems;
+
+        /// <summary>
+        /// Gets the list of items offered by the destination user.
+        /// </summary>
+        public IReadOnlyList<Item> DestinationUserItems => this.destinationUserItems;
+
+        /// <summary>
+        /// Sets the unique identifier of the trade.
+        /// </summary>
+        /// <param name="tradeId">The ID to assign.</param>
         public void SetTradeId(int tradeId)
         {
-            _tradeId = tradeId;
+            this.tradeId = tradeId;
         }
 
+        /// <summary>
+        /// Adds an item to the source user's list of offered items.
+        /// </summary>
+        /// <param name="item">The item to add.</param>
         public void AddSourceUserItem(Item item)
         {
             if (item == null)
+            {
                 throw new ArgumentNullException(nameof(item));
-            _sourceUserItems.Add(item);
+            }
+
+            this.sourceUserItems.Add(item);
         }
 
+        /// <summary>
+        /// Adds an item to the destination user's list of offered items.
+        /// </summary>
+        /// <param name="item">The item to add.</param>
         public void AddDestinationUserItem(Item item)
         {
             if (item == null)
+            {
                 throw new ArgumentNullException(nameof(item));
-            _destinationUserItems.Add(item);
+            }
+
+            this.destinationUserItems.Add(item);
         }
 
+        /// <summary>
+        /// Marks the trade as accepted by the source user.
+        /// </summary>
         public void AcceptBySourceUser()
         {
-            _acceptedBySourceUser = true;
-            if (_acceptedByDestinationUser)
+            this.acceptedBySourceUser = true;
+            if (this.acceptedByDestinationUser)
             {
-                _tradeStatus = "Completed";
+                this.tradeStatus = StatusCompleted;
             }
         }
 
+        /// <summary>
+        /// Marks the trade as accepted by the destination user.
+        /// </summary>
         public void AcceptByDestinationUser()
         {
-            _acceptedByDestinationUser = true;
-            if (_acceptedBySourceUser)
+            this.acceptedByDestinationUser = true;
+            if (this.acceptedBySourceUser)
             {
-                _tradeStatus = "Completed";
+                this.tradeStatus = StatusCompleted;
             }
         }
 
-        public void Decline()
+        /// <summary>
+        /// Declines the trade and resets acceptance flags.
+        /// </summary>
+        public void DeclineTradeRequest()
         {
-            _tradeStatus = "Declined";
-            _acceptedBySourceUser = false;
-            _acceptedByDestinationUser = false;
+            this.tradeStatus = StatusDeclined;
+            this.acceptedBySourceUser = false;
+            this.acceptedByDestinationUser = false;
         }
 
-        public void Complete()
+        /// <summary>
+        /// Completes the trade by setting it as accepted by both users.
+        /// </summary>
+        public void MarkTradeAsCompleted()
         {
-            _tradeStatus = "Completed";
-            _acceptedBySourceUser = true;
-            _acceptedByDestinationUser = true;
+            this.tradeStatus = StatusCompleted;
+            this.acceptedBySourceUser = true;
+            this.acceptedByDestinationUser = true;
         }
     }
-} 
+}
