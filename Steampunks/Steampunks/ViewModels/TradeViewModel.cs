@@ -5,14 +5,15 @@
 namespace Steampunks.ViewModels
 {
     using System;
+    using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.ComponentModel;
     using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
-    using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
     using Steampunks.Services;
+    using Steampunks.Services.TradeService;
 
     /// <summary>
     /// The ViewModel for game and item Trade.
@@ -42,7 +43,6 @@ namespace Steampunks.ViewModels
         /// <param name="tradeService">The service for trading operations.</param>
         /// <param name="userService">The service for user operations.</param>
         /// <param name="gameService">The service for game operations.</param>
-        /// <param name="dbConnector">The connector to the database.</param>
         public TradeViewModel(ITradeService tradeService, IUserService userService, IGameService gameService)
         {
             this.tradeService = tradeService;
@@ -476,6 +476,24 @@ namespace Steampunks.ViewModels
             }
         }
 
+        /// <inheritdoc/>
+        public async Task<List<ItemTrade>> GetActiveTradesAsync(int userId)
+        {
+            return await this.tradeService.GetActiveTradesAsync(userId);
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ItemTrade>> GetTradeHistoryAsync(int userId)
+        {
+            return await this.tradeService.GetTradeHistoryAsync(userId);
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Item>> GetUserInventoryAsync(int userId)
+        {
+            return await this.tradeService.GetUserInventoryAsync(userId);
+        }
+
         /// <summary>
         /// Handler for property changes.
         /// </summary>
@@ -489,11 +507,11 @@ namespace Steampunks.ViewModels
         {
             await this.LoadUsersAsync();
             await this.LoadGamesAsync();
-            this.LoadCurrentUser();
-            this.LoadActiveTrades();
+            await this.LoadCurrentUserAsync();
+            await this.LoadActiveTradesAsync();
         }
 
-        private async void LoadCurrentUser()
+        private async Task LoadCurrentUserAsync()
         {
             try
             {
@@ -626,6 +644,26 @@ namespace Steampunks.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading trade history: {ex.Message}");
             }
+        }
+
+        public async Task CreateTradeAsync(ItemTrade trade)
+        {
+            await this.tradeService.CreateTradeAsync(trade);
+        }
+
+        public async Task<List<Game>> GetAllGamesAsync()
+        {
+            return await this.gameService.GetAllGamesAsync();
+        }
+
+        public async Task<List<User>> GetAllUsersAsync()
+        {
+            return await this.userService.GetAllUsersAsync();
+        }
+
+        public async Task<User?> GetCurrentUserAsync()
+        {
+            return await this.tradeService.GetCurrentUserAsync();
         }
     }
 }

@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace Steampunks.Services
+namespace Steampunks.Services.TradeService
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;

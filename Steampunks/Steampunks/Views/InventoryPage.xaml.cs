@@ -9,6 +9,7 @@ namespace Steampunks.Views
     using Microsoft.UI.Xaml;
     using Microsoft.UI.Xaml.Controls;
     using Microsoft.UI.Xaml.Navigation;
+    using Steampunks.DataLink;
     using Steampunks.Domain.Entities;
     using Steampunks.Repository.Inventory;
     using Steampunks.Services.InventoryService.InventoryService;
@@ -37,13 +38,21 @@ namespace Steampunks.Views
             this.InitializeComponent();
 
             // Ideally, use a dependency injection container to resolve these services.
-            IInventoryRepository inventoryRepository = new InventoryRepository();
+            IDatabaseConnector databaseConnector = new DatabaseConnector();
+            IInventoryRepository inventoryRepository = new InventoryRepository(databaseConnector);
             var inventoryService = new InventoryService(inventoryRepository);
             this.ViewModel = new InventoryViewModel(inventoryService);
             this.DataContext = this;
 
+            this.Loaded += InventoryPage_Loaded;
             // Subscribe to user selection changes.
             this.UserComboBox.SelectionChanged += OnUserSelectionChanged;
+        }
+
+        private async void InventoryPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Call the asynchronous initialization method.
+            await this.ViewModel.InitializeAsync();
         }
 
         /// <summary>
