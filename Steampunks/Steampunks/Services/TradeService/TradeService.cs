@@ -101,7 +101,7 @@ namespace Steampunks.Services.TradeService
         {
             try
             {
-                trade.Decline();
+                trade.DeclineTradeRequest();
                 await this.tradeRepository.UpdateItemTradeAsync(trade);
             }
             catch (Exception ex)
@@ -139,7 +139,7 @@ namespace Steampunks.Services.TradeService
                     await this.tradeRepository.TransferItemAsync(item.ItemId, trade.DestinationUser.UserId, trade.SourceUser.UserId);
                 }
 
-                trade.Complete();
+                trade.MarkTradeAsCompleted();
                 await this.tradeRepository.UpdateItemTradeAsync(trade);
             }
             catch (Exception ex)
