@@ -91,11 +91,11 @@ namespace Steampunks.Repository.Trade
                             string tradeStatus = reader.GetString(reader.GetOrdinal("TradeStatus"));
                             if (tradeStatus == "Completed")
                             {
-                                trade.Complete();
+                                trade.MarkTradeAsCompleted();
                             }
                             else if (tradeStatus == "Declined")
                             {
-                                trade.Decline();
+                                trade.DeclineTradeRequest();
                             }
 
                             trades.Add(trade);
@@ -208,11 +208,11 @@ namespace Steampunks.Repository.Trade
                             string tradeStatus = reader.GetString(reader.GetOrdinal("TradeStatus"));
                             if (tradeStatus == "Completed")
                             {
-                                trade.Complete();
+                                trade.MarkTradeAsCompleted();
                             }
                             else if (tradeStatus == "Declined")
                             {
-                                trade.Decline();
+                                trade.DeclineTradeRequest();
                             }
 
                             trades.Add(trade);
