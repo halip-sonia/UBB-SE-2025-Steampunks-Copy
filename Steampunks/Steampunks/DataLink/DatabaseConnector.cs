@@ -16,7 +16,7 @@ namespace Steampunks.DataLink
     /// Provides utility methods for managing SQL Server database connections and performing basic operations.
     /// Responsible for opening, closing, and testing connections, as well as executing specific insert logic such as adding games with items.
     /// </summary>
-    public class DatabaseConnector
+    public class DatabaseConnector: IDatabaseConnector
     {
         private readonly string connectionString;
         private SqlConnection? connection;
@@ -344,7 +344,8 @@ namespace Steampunks.DataLink
             }
         }
 
-        internal string GetItemImagePath(Item item)
+
+        public string GetItemImagePath(Item item)
         {
             try
             {
