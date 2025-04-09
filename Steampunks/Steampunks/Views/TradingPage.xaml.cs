@@ -64,7 +64,6 @@ namespace Steampunks.Views
         private const string DeclineTradeErrorPrefix = "Error declining trade: ";
         private const int NoSelectionIndex = -1;
 
-        private readonly DatabaseConnector databaseConnector;
         private readonly ITradeService tradeService;
         private readonly IUserService userService;
         private readonly IGameService gameService;
@@ -82,7 +81,6 @@ namespace Steampunks.Views
         public TradingPage()
         {
             this.InitializeComponent();
-            this.databaseConnector = new DatabaseConnector();
             this.tradeService = new TradeService(new TradeRepository());
             this.userService = new UserService(new UserRepository());
             this.gameService = new GameService(new GameRepository());
@@ -101,8 +99,6 @@ namespace Steampunks.Views
 
             this.LoadUsers();
             this.LoadGames();
-            this.LoadActiveTrades();
-            this.LoadTradeHistory();
         }
 
         private TradeViewModel ViewModel { get; set; }
@@ -118,15 +114,15 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if the user list or current user could not be loaded from the database.
         /// </exception>
-        private void LoadUsers()
+        private async void LoadUsers()
         {
             try
             {
-                var allUsers = this.databaseConnector.GetAllUsers();
+                var allUsers = await this.ViewModel.GetAllUsersAsync();
                 this.UserComboBox.ItemsSource = allUsers;
                 this.UserComboBox.DisplayMemberPath = DisplayMemberUsername;
 
-                var loggedInUser = this.databaseConnector.GetCurrentUser();
+                var loggedInUser = await this.ViewModel.GetCurrentUserAsync();
                 this.currentUser = loggedInUser;
 
                 if (loggedInUser != null)
@@ -151,12 +147,12 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// May throw an exception if the user list cannot be retrieved from the database.
         /// </exception>
-        private void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
+        private async void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
         {
             this.currentUser = this.UserComboBox.SelectedItem as User;
             if (this.currentUser != null)
             {
-                var availableTradePartners = this.databaseConnector.GetAllUsers().Where(user => user.UserId != this.currentUser.UserId).ToList();
+                var availableTradePartners = (await this.ViewModel.GetAllUsersAsync()).Where(user => user.UserId != this.currentUser.UserId).ToList();
                 this.RecipientComboBox.ItemsSource = availableTradePartners;
                 this.RecipientComboBox.DisplayMemberPath = DisplayMemberUsername;
 
@@ -260,11 +256,11 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if the list of games could not be retrieved from the database.
         /// </exception>
-        private void LoadGames()
+        private async void LoadGames()
         {
             try
             {
-                var allGames = this.databaseConnector.GetAllGames();
+                var allGames = await this.ViewModel.GetAllGamesAsync();
                 this.GameComboBox.ItemsSource = allGames;
                 this.GameComboBox.DisplayMemberPath = GameDisplayMemberPath;
 
@@ -457,7 +453,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if the trade offer cannot be created or saved to the database.
         /// </exception>
-        private void CreateTradeOffer_Click(object sender, RoutedEventArgs eventArgs)
+        private async void CreateTradeOffer_Click(object sender, RoutedEventArgs eventArgs)
         {
             this.ErrorMessage.Text = string.Empty;
             this.SuccessMessage.Text = string.Empty;
@@ -510,7 +506,7 @@ namespace Steampunks.Views
                     itemTrade.AddDestinationUserItem(item);
                 }
 
-                this.databaseConnector.CreateItemTrade(itemTrade);
+                await this.ViewModel.CreateTradeAsync(itemTrade);
 
                 this.GameComboBox.SelectedIndex = NoSelectionIndex;
                 this.RecipientComboBox.SelectedIndex = NoSelectionIndex;

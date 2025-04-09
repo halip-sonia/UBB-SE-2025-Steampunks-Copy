@@ -42,18 +42,15 @@ namespace Steampunks.Services.TradeService
         /// <inheritdoc/>
         public async Task CreateTradeAsync(ItemTrade trade)
         {
-            await Task.Run(() =>
+            try
             {
-                try
-                {
-                    this.tradeRepository.AddItemTradeAsync(trade);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error creating trade: {ex.Message}");
-                    throw;
-                }
-            });
+                await this.tradeRepository.AddItemTradeAsync(trade);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating trade: {ex.Message}");
+                throw;
+            }
         }
 
         /// <inheritdoc/>
