@@ -12,7 +12,7 @@ namespace Steampunks.DataLink
     using Steampunks.Domain.Entities;
     using Steampunks.Utils;
 
-    public class DatabaseConnector
+    public class DatabaseConnector: IDatabaseConnector
     {
         private readonly string connectionString;
         private SqlConnection? connection;
@@ -747,7 +747,7 @@ namespace Steampunks.DataLink
             }
         }
 
-        internal string GetItemImagePath(Item item)
+        public string GetItemImagePath(Item item)
         {
             try
             {

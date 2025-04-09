@@ -20,13 +20,13 @@ namespace Steampunks.Repository.Inventory
         private readonly string connectionString;
         private SqlConnection? connection;
 
-        private DatabaseConnector? dataBaseConnector;
+        private IDatabaseConnector? dataBaseConnector;
         /// <summary>
         /// Initializes a new instance of the <see cref="InventoryRepository"/> class.
         /// </summary>
-        public InventoryRepository()
+        public InventoryRepository(IDatabaseConnector databaseConnector)
         {
-            this.dataBaseConnector = new DatabaseConnector();
+            this.dataBaseConnector = databaseConnector;
         }
 
         /// <summary>
