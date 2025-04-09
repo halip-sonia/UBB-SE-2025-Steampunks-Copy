@@ -865,32 +865,6 @@ namespace Steampunks.DataLink
             }
         }
 
-        internal string GetItemImagePath(Item item)
-        {
-            try
-            {
-                // Get the game folder name based on the game title
-                string gameFolder = item.Game.Title.ToLower() switch
-                {
-                    "counter-strike 2" => "cs2",
-                    "dota 2" => "dota2",
-                    "team fortress 2" => "tf2",
-                    _ => item.Game.Title.ToLower().Replace(" ", string.Empty).Replace(":", string.Empty)
-                };
-
-                // Return a path to the image based on the ItemId
-                var path = $"ms-appx:///Assets/img/games/{gameFolder}/{item.ItemId}.png";
-                System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
-                return path;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                return "ms-appx:///Assets/img/games/default-item.png";
-            }
-        }
-
         private void InsertTestGames()
         {
             var testGames = new List<(string title, float price, string genre, string description)>
