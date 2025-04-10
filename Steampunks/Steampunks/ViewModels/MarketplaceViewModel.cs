@@ -211,10 +211,10 @@ namespace Steampunks.ViewModels
                 // Re-throw specific error messages.
                 throw;
             }
-            catch (Exception exception)
+            catch (Exception buyingItemException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error buying item: {exception.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {exception.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error buying item: {buyingItemException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {buyingItemException.StackTrace}");
                 throw new InvalidOperationException("An error occurred while buying the item. Please try again.");
             }
         }
@@ -247,8 +247,8 @@ namespace Steampunks.ViewModels
         private void InitializeCollections()
         {
             var allItems = this.Items.ToList();
-            this.AvailableGames = new ObservableCollection<string>(allItems.Select(i => i.Game.Title).Distinct());
-            this.AvailableTypes = new ObservableCollection<string>(allItems.Select(i => i.ItemName.Split('|').First().Trim()).Distinct());
+            this.AvailableGames = new ObservableCollection<string>(allItems.Select(item => item.Game.Title).Distinct());
+            this.AvailableTypes = new ObservableCollection<string>(allItems.Select(item => item.ItemName.Split('|').First().Trim()).Distinct());
             this.AvailableRarities = new ObservableCollection<string>(new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary" });
         }
 
@@ -259,22 +259,22 @@ namespace Steampunks.ViewModels
             if (!string.IsNullOrEmpty(this.SearchText))
             {
                 var searchTextLower = this.SearchText.ToLower();
-                filteredItems = filteredItems.Where(i =>
-                    i.ItemName.ToLower().Contains(searchTextLower) ||
-                    i.Description.ToLower().Contains(searchTextLower));
+                filteredItems = filteredItems.Where(item =>
+                    item.ItemName.ToLower().Contains(searchTextLower) ||
+                    item.Description.ToLower().Contains(searchTextLower));
             }
 
             if (!string.IsNullOrEmpty(this.SelectedGame))
             {
-                filteredItems = filteredItems.Where(i => i.Game.Title == this.SelectedGame);
+                filteredItems = filteredItems.Where(item => item.Game.Title == this.SelectedGame);
             }
 
             if (!string.IsNullOrEmpty(this.SelectedType))
             {
-                filteredItems = filteredItems.Where(i =>
-                    i.ItemName.IndexOf('|') > 0
-                        ? i.ItemName.Substring(0, i.ItemName.IndexOf('|')).Trim() == this.SelectedType
-                        : i.ItemName.Trim() == this.SelectedType);
+                filteredItems = filteredItems.Where(item =>
+                    item.ItemName.IndexOf('|') > 0
+                        ? item.ItemName.Substring(0, item.ItemName.IndexOf('|')).Trim() == this.SelectedType
+                        : item.ItemName.Trim() == this.SelectedType);
             }
 
             this.Items = new ObservableCollection<Item>(filteredItems);

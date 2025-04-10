@@ -178,7 +178,7 @@ namespace Steampunks.ViewModels
                     return new ObservableCollection<User>(this.Users);
                 }
 
-                return new ObservableCollection<User>(this.Users.Where(u => u.UserId != this.CurrentUser.UserId));
+                return new ObservableCollection<User>(this.Users.Where(userInner => userInner.UserId != this.CurrentUser.UserId));
             }
         }
 
@@ -361,9 +361,9 @@ namespace Steampunks.ViewModels
                 this.LoadUserInventory();
                 this.LoadDestinationUserInventory();
             }
-            catch (Exception ex)
+            catch (Exception creatingTradeException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error creating trade offer: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error creating trade offer: {creatingTradeException.Message}");
             }
         }
 
@@ -393,12 +393,12 @@ namespace Steampunks.ViewModels
                 this.OnPropertyChanged(nameof(this.ActiveTrades));
                 this.OnPropertyChanged(nameof(this.TradeHistory));
             }
-            catch (Exception ex)
+            catch (Exception acceptingTradeException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
-                if (ex.InnerException != null)
+                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {acceptingTradeException.Message}");
+                if (acceptingTradeException.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {acceptingTradeException.InnerException.Message}");
                 }
 
                 throw;
@@ -431,9 +431,9 @@ namespace Steampunks.ViewModels
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception decliningTradeException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error declining trade: {decliningTradeException.Message}");
                 return false;
             }
         }
@@ -443,17 +443,17 @@ namespace Steampunks.ViewModels
         {
             try
             {
-                var users = await this.userService.GetAllUsersAsync();
+                var allUsers = await this.userService.GetAllUsersAsync();
 
                 this.Users.Clear();
-                foreach (var user in users)
+                foreach (var user in allUsers)
                 {
                     this.Users.Add(user);
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingUsersException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading users: {loadingUsersException.Message}");
             }
         }
 
@@ -462,17 +462,17 @@ namespace Steampunks.ViewModels
         {
             try
             {
-                var games = await this.gameService.GetAllGamesAsync();
+                var allGames = await this.gameService.GetAllGamesAsync();
 
                 this.Games.Clear();
-                foreach (var game in games)
+                foreach (var game in allGames)
                 {
                     this.Games.Add(game);
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingGamesException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading games: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading games: {loadingGamesException.Message}");
             }
         }
 
@@ -517,9 +517,9 @@ namespace Steampunks.ViewModels
             {
                 this.CurrentUser = await this.tradeService.GetCurrentUserAsync();
             }
-            catch (Exception ex)
+            catch (Exception loadingCurrentUserException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading current user: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading current user: {loadingCurrentUserException.Message}");
             }
         }
 
@@ -532,9 +532,9 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var items = await this.tradeService.GetUserInventoryAsync(this.CurrentUser.UserId);
+                var userInventoryItems = await this.tradeService.GetUserInventoryAsync(this.CurrentUser.UserId);
                 this.SourceUserItems.Clear();
-                foreach (var item in items.Where(i => !i.IsListed))
+                foreach (var item in userInventoryItems.Where(itemInner => !itemInner.IsListed))
                 {
                     if (this.SelectedGame == null || item.Game.GameId == this.SelectedGame.GameId)
                     {
@@ -542,9 +542,9 @@ namespace Steampunks.ViewModels
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingUserInventoryException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading user inventory: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading user inventory: {loadingUserInventoryException.Message}");
             }
         }
 
@@ -557,9 +557,9 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var items = await this.tradeService.GetUserInventoryAsync(this.SelectedUser.UserId);
+                var userInventoryItems = await this.tradeService.GetUserInventoryAsync(this.SelectedUser.UserId);
                 this.DestinationUserItems.Clear();
-                foreach (var item in items.Where(i => !i.IsListed))
+                foreach (var item in userInventoryItems.Where(itemInner => !itemInner.IsListed))
                 {
                     if (this.SelectedGame == null || item.Game.GameId == this.SelectedGame.GameId)
                     {
@@ -567,9 +567,9 @@ namespace Steampunks.ViewModels
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingDestinationUserInventoryException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading destination user inventory: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading destination user inventory: {loadingDestinationUserInventoryException.Message}");
             }
         }
 
@@ -582,16 +582,16 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var trades = await this.tradeService.GetActiveTradesAsync(this.CurrentUser.UserId);
+                var activeTrades = await this.tradeService.GetActiveTradesAsync(this.CurrentUser.UserId);
                 this.ActiveTrades.Clear();
-                foreach (var trade in trades)
+                foreach (var trade in activeTrades)
                 {
                     this.ActiveTrades.Add(trade);
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingActiveTradesException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading active trades: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading active trades: {loadingActiveTradesException.Message}");
             }
         }
 
@@ -604,16 +604,16 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var trades = await this.tradeService.GetActiveTradesAsync(this.CurrentUser.UserId);
+                var activeTrades = await this.tradeService.GetActiveTradesAsync(this.CurrentUser.UserId);
                 this.ActiveTrades.Clear();
-                foreach (var trade in trades)
+                foreach (var trade in activeTrades)
                 {
                     this.ActiveTrades.Add(trade);
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingActiveTradesException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading active trades: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading active trades: {loadingActiveTradesException.Message}");
             }
         }
 
@@ -626,9 +626,9 @@ namespace Steampunks.ViewModels
 
             try
             {
-                var trades = await this.tradeService.GetTradeHistoryAsync(this.CurrentUser.UserId);
+                var historyTrades = await this.tradeService.GetTradeHistoryAsync(this.CurrentUser.UserId);
                 this.TradeHistory.Clear();
-                foreach (var trade in trades)
+                foreach (var trade in historyTrades)
                 {
                     // Only add trades where the current user is involved
                     if (trade.SourceUser.UserId == this.CurrentUser.UserId ||
@@ -640,9 +640,9 @@ namespace Steampunks.ViewModels
 
                 this.OnPropertyChanged(nameof(this.TradeHistory));
             }
-            catch (Exception ex)
+            catch (Exception loadingTradeHistoryException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading trade history: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading trade history: {loadingTradeHistoryException.Message}");
             }
         }
 
