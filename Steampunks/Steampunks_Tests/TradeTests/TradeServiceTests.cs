@@ -105,9 +105,10 @@ namespace Steampunks.Tests.Trade
             await tradeService.AcceptTradeAsync(trade, false);
 
             // Assert
-            Assert.That(trade.AcceptedBySourceUser, Is.False);
+            Assert.That(trade.AcceptedBySourceUser, Is.True);
             Assert.That(trade.AcceptedByDestinationUser, Is.True);
-            mockTradeRepository.Verify(repo => repo.UpdateItemTradeAsync(trade), Times.Once);
+            mockTradeRepository.Verify(repo => repo.UpdateItemTradeAsync(trade), Times.Exactly(2)); //one for updating Accepted by destination and one for CompleteTrade
+
         }
 
         [Test]

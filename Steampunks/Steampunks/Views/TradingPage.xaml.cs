@@ -105,7 +105,7 @@ namespace Steampunks.Views
             this.LoadGames();
         }
 
-        private ITradeViewModel ViewModel { get; set; }
+        private TradeViewModel ViewModel { get; set; }
 
         private ObservableCollection<ItemTrade> ActiveTrades { get; set; }
 
