@@ -19,6 +19,7 @@ namespace Steampunks.Views
     using Steampunks.Repository.Trade;
     using Steampunks.Repository.UserRepository;
     using Steampunks.Services;
+    using Steampunks.Services.TradeService;
     using Steampunks.ViewModels;
 
     /// <summary>
@@ -82,7 +83,6 @@ namespace Steampunks.Views
         public TradingPage()
         {
             this.InitializeComponent();
-            this.databaseConnector = new DatabaseConnector();
             this.tradeService = new TradeService(new TradeRepository());
             this.userService = new UserService(new UserRepository());
             this.gameService = new GameService(new GameRepository(databaseConnector));
@@ -101,8 +101,6 @@ namespace Steampunks.Views
 
             this.LoadUsers();
             this.LoadGames();
-            this.LoadActiveTrades();
-            this.LoadTradeHistory();
         }
 
         private TradeViewModel ViewModel { get; set; }
@@ -118,15 +116,15 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if the user list or current user could not be loaded from the database.
         /// </exception>
-        private void LoadUsers()
+        private async void LoadUsers()
         {
             try
             {
-                var allUsers = this.databaseConnector.GetAllUsers();
+                var allUsers = await this.ViewModel.GetAllUsersAsync();
                 this.UserComboBox.ItemsSource = allUsers;
                 this.UserComboBox.DisplayMemberPath = DisplayMemberUsername;
 
-                var loggedInUser = this.databaseConnector.GetCurrentUser();
+                var loggedInUser = await this.ViewModel.GetCurrentUserAsync();
                 this.currentUser = loggedInUser;
 
                 if (loggedInUser != null)
@@ -151,12 +149,12 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// May throw an exception if the user list cannot be retrieved from the database.
         /// </exception>
-        private void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
+        private async void UserComboBox_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
         {
             this.currentUser = this.UserComboBox.SelectedItem as User;
             if (this.currentUser != null)
             {
-                var availableTradePartners = this.databaseConnector.GetAllUsers().Where(user => user.UserId != this.currentUser.UserId).ToList();
+                var availableTradePartners = (await this.ViewModel.GetAllUsersAsync()).Where(user => user.UserId != this.currentUser.UserId).ToList();
                 this.RecipientComboBox.ItemsSource = availableTradePartners;
                 this.RecipientComboBox.DisplayMemberPath = DisplayMemberUsername;
 
@@ -187,7 +185,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if user items could not be retrieved or filtered.
         /// </exception>
-        private void LoadUserItems()
+        private async void LoadUserItems()
         {
             try
             {
@@ -196,7 +194,7 @@ namespace Steampunks.Views
 
                 if (this.currentUser != null)
                 {
-                    var userItems = this.databaseConnector.GetUserItems(this.currentUser.UserId);
+                    var userItems = await this.ViewModel.GetUserInventoryAsync(this.currentUser.UserId);
                     var selectedGame = this.GameComboBox.SelectedItem as Game;
 
                     if (selectedGame != null)
@@ -224,7 +222,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if recipient items could not be retrieved or filtered.
         /// </exception>
-        private void LoadRecipientItems()
+        private async void LoadRecipientItems()
         {
             try
             {
@@ -233,7 +231,7 @@ namespace Steampunks.Views
 
                 if (this.recipientUser != null)
                 {
-                    var recipientItems = this.databaseConnector.GetUserItems(this.recipientUser.UserId);
+                    var recipientItems = await this.ViewModel.GetUserInventoryAsync(this.recipientUser.UserId);
                     var selectedGame = this.GameComboBox.SelectedItem as Game;
 
                     if (selectedGame != null)
@@ -260,11 +258,11 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if the list of games could not be retrieved from the database.
         /// </exception>
-        private void LoadGames()
+        private async void LoadGames()
         {
             try
             {
-                var allGames = this.databaseConnector.GetAllGames();
+                var allGames = await this.ViewModel.GetAllGamesAsync();
                 this.GameComboBox.ItemsSource = allGames;
                 this.GameComboBox.DisplayMemberPath = GameDisplayMemberPath;
 
@@ -291,7 +289,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if active trades could not be retrieved from the database.
         /// </exception>
-        private void LoadActiveTrades()
+        private async void LoadActiveTrades()
         {
             if (this.currentUser == null)
             {
@@ -301,7 +299,7 @@ namespace Steampunks.Views
 
             try
             {
-                var activeTrades = this.databaseConnector.GetActiveItemTrades(this.currentUser.UserId);
+                var activeTrades = await this.tradeService.GetActiveTradesAsync(this.currentUser.UserId);
                 this.ActiveTrades.Clear();
 
                 foreach (var trade in activeTrades)
@@ -323,7 +321,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if trade history data could not be retrieved or processed.
         /// </exception>
-        private void LoadTradeHistory()
+        private async void LoadTradeHistory()
         {
             if (this.currentUser == null)
             {
@@ -333,7 +331,7 @@ namespace Steampunks.Views
 
             try
             {
-                var tradeHistoryEntries = this.databaseConnector.GetItemTradeHistory(this.currentUser.UserId);
+                var tradeHistoryEntries = await this.ViewModel.GetTradeHistoryAsync(this.currentUser.UserId);
                 this.TradeHistory.Clear();
 
                 foreach (var trade in tradeHistoryEntries)
@@ -457,7 +455,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if the trade offer cannot be created or saved to the database.
         /// </exception>
-        private void CreateTradeOffer_Click(object sender, RoutedEventArgs eventArgs)
+        private async void CreateTradeOffer_Click(object sender, RoutedEventArgs eventArgs)
         {
             this.ErrorMessage.Text = string.Empty;
             this.SuccessMessage.Text = string.Empty;
@@ -510,7 +508,7 @@ namespace Steampunks.Views
                     itemTrade.AddDestinationUserItem(item);
                 }
 
-                this.databaseConnector.CreateItemTrade(itemTrade);
+                await this.ViewModel.CreateTradeAsync(itemTrade);
 
                 this.GameComboBox.SelectedIndex = NoSelectionIndex;
                 this.RecipientComboBox.SelectedIndex = NoSelectionIndex;
