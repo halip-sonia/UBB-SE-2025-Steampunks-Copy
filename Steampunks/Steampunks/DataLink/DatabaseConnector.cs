@@ -28,6 +28,7 @@ namespace Steampunks.DataLink
         {
             // Local MSSQL connection string
             this.connectionString = Configuration.CONNECTIONSTRINGSONIA;
+
         }
 
         /// <summary>
@@ -90,6 +91,8 @@ namespace Steampunks.DataLink
             {
                 this.connection?.Close();
             }
+
+            this.connection = null;
         }
 
         /// <summary>
@@ -100,6 +103,7 @@ namespace Steampunks.DataLink
         {
             if (this.connection?.State != ConnectionState.Closed)
             {
+}
                 await Task.Run(() => this.connection?.Close());
             }
         }

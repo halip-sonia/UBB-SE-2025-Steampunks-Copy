@@ -25,7 +25,7 @@ namespace Steampunks.Services
         /// Initializes a new instance of the <see cref="GameService"/> class.
         /// </summary>
         /// <param name="databaseConnector">Database connector for accessing game data.</param>
-        public GameService(IGameRepository gameRepository) 
+        public GameService(IGameRepository gameRepository)
         {
                 this.gameRepository = gameRepository;
         }
@@ -44,7 +44,7 @@ namespace Steampunks.Services
         /// </summary>
         /// <param name="gameId">The ID of the game.</param>
         /// <returns>The game with the specified ID.</returns>
-        public async Task<Game> GetGameByIdAsync(int gameId)
+        public async Task<Game?> GetGameByIdAsync(int gameId)
         {
             return await this.gameRepository.GetGameByIdAsync(gameId);
         }

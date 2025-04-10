@@ -28,7 +28,7 @@ namespace Steampunks.Services
         /// </summary>
         /// <param name="gameId">The ID of the game.</param>
         /// <returns>The game with the specified ID.</returns>
-        Task<Game> GetGameByIdAsync(int gameId);
+        Task<Game?> GetGameByIdAsync(int gameId);
 
         /// <summary>
         /// Asynchronously updates a game's information in the database.

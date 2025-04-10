@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
@@ -58,21 +58,21 @@ namespace Steampunks.Repository.IntegrationTests
             }
         }
 
-        //[SetUp]
-        //public async Task Setup()
-        //{
-        //    // Additional per-test cleanup if needed – for example, clear Items.
-        //    using (var connection = databaseConnector.GetConnection())
-        //    {
-        //        await connection.OpenAsync();
-        //        using (var command = connection.CreateCommand())
-        //        {
-        //            command.CommandText = "DELETE FROM dbo.Items;";
-        //            await command.ExecuteNonQueryAsync();
-        //        }
-        //        connection.Close();
-        //    }
-        //}
+        [SetUp]
+        public async Task Setup()
+        {
+            // Additional per-test cleanup if needed – for example, clear Items.
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM dbo.Items;";
+                    await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+        }
 
         [Test]
         public async Task AddItemToInventoryAsync_ValidParameters_InsertsItem()
