@@ -202,14 +202,14 @@ namespace Steampunks.Services.InventoryService.InventoryService
                 return x.GameId == y.GameId;
             }
 
-            public int GetHashCode(Game obj)
+            public int GetHashCode(Game objectTGetHashCodeFrom)
             {
-                if (obj == null)
+                if (objectTGetHashCodeFrom == null)
                 {
                     return 0;
                 }
 
-                return obj.GameId.GetHashCode();
+                return objectTGetHashCodeFrom.GameId.GetHashCode();
             }
         }
     }
