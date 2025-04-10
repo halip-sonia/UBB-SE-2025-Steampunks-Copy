@@ -354,5 +354,17 @@ namespace Steampunks.Repository.Marketplace
                 }
             }
         }
+
+        /// <inheritdoc/>
+        public User? GetCurrentUser()
+        {
+            return this.databaseConnector.GetCurrentUser();
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<User>> GetAllUsersAsync()
+        {
+            return await this.databaseConnector.GetAllUsersAsync();
+        }
     }
 }
