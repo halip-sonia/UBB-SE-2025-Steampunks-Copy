@@ -61,10 +61,10 @@ namespace Steampunks.Repository.Marketplace
                         transaction.Commit();
                         return true;
                     }
-                    catch (Exception ex)
+                    catch (Exception buyItemTransactionException)
                     {
-                        Debug.WriteLine($"Error in BuyItem transaction: {ex.Message}");
-                        Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        Debug.WriteLine($"Error in BuyItem transaction: {buyItemTransactionException.Message}");
+                        Debug.WriteLine($"Stack trace: {buyItemTransactionException.StackTrace}");
                         transaction.Rollback();
                         throw new InvalidOperationException("Failed to complete purchase. Please try again.");
                     }
@@ -232,17 +232,17 @@ namespace Steampunks.Repository.Marketplace
                     {
                         while (await reader.ReadAsync())
                         {
-                            var gameObj = new Game(
+                            var gameObject = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
                                 (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
                                 reader.GetString(reader.GetOrdinal("Genre")),
                                 reader.GetString(reader.GetOrdinal("GameDescription")));
-                            gameObj.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            gameObj.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
+                            gameObject.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
+                            gameObject.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
 
                             var item = new Item(
                                 reader.GetString(reader.GetOrdinal("ItemName")),
-                                gameObj,
+                                gameObject,
                                 (float)reader.GetDouble(reader.GetOrdinal("Price")),
                                 reader.GetString(reader.GetOrdinal("Description")));
                             item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));

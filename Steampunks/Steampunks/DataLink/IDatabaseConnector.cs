@@ -1,20 +1,23 @@
-﻿using Microsoft.Data.SqlClient;
-using Steampunks.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// <copyright file="IDatabaseConnector.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
 namespace Steampunks.DataLink
 {
+    using System.Threading.Tasks;
+    using Microsoft.Data.SqlClient;
+    using Steampunks.Domain.Entities;
+
     public interface IDatabaseConnector
     {
         SqlConnection GetConnection();
-        Task OpenConnectionAsync();
-        void CloseConnection();
-        string GetItemImagePath(Item item);
-        User GetCurrentUser();
-    }
 
+        Task OpenConnectionAsync();
+
+        void CloseConnection();
+
+        string GetItemImagePath(Item item);
+
+        User? GetCurrentUser();
+    }
 }

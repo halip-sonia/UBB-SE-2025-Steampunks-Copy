@@ -16,7 +16,7 @@ namespace Steampunks.DataLink
     /// Provides utility methods for managing SQL Server database connections and performing basic operations.
     /// Responsible for opening, closing, and testing connections, as well as executing specific insert logic such as adding games with items.
     /// </summary>
-    public class DatabaseConnector: IDatabaseConnector
+    public class DatabaseConnector : IDatabaseConnector
     {
         private readonly string connectionString;
         private SqlConnection? connection;
@@ -102,7 +102,6 @@ namespace Steampunks.DataLink
         {
             if (this.connection?.State != ConnectionState.Closed)
             {
-}
                 await Task.Run(() => this.connection?.Close());
             }
         }
@@ -121,15 +120,15 @@ namespace Steampunks.DataLink
                     connection.Open();
                     using (var command = new SqlCommand("SELECT DB_NAME()", connection))
                     {
-                        var dbName = command.ExecuteScalar().ToString();
-                        System.Diagnostics.Debug.WriteLine($"Connected to database: {dbName}");
+                        var databaseName = command.ExecuteScalar().ToString();
+                        System.Diagnostics.Debug.WriteLine($"Connected to database: {databaseName}");
                         return true;
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                System.Diagnostics.Debug.WriteLine($"Database connection test failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Database connection test failed: {exception.Message}");
                 return false;
             }
         }
@@ -142,9 +141,9 @@ namespace Steampunks.DataLink
         /// <param name="gamePrice">The price of the game.</param>
         /// <param name="genre">The genre of the game.</param>
         /// <param name="description">A description of the game.</param>
-        /// <param name="items">An array of items associated with the game, each with a name, price, and description.</param>
+        /// <param name="itemsToBeAdded">An array of items associated with the game, each with a name, price, and description.</param>
         /// <exception cref="Exception">Throws any exception encountered during the database operation.</exception>
-        public void AddGameWithItems(string gameTitle, float gamePrice, string genre, string description, params (string Name, float Price, string Description)[] items)
+        public void AddGameWithItems(string gameTitle, float gamePrice, string genre, string description, params (string Name, float Price, string Description)[] itemsToBeAdded)
         {
             try
             {
@@ -178,7 +177,7 @@ namespace Steampunks.DataLink
                             INSERT INTO Items (ItemName, GameId, Price, Description, IsListed)
                             VALUES (@ItemName, @GameId, @Price, @Description, 0);";
 
-                        foreach (var item in items)
+                        foreach (var item in itemsToBeAdded)
                         {
                             using (var command = new SqlCommand(itemQuery, this.GetConnection(), transaction))
                             {
@@ -192,10 +191,10 @@ namespace Steampunks.DataLink
 
                         transaction.Commit();
                     }
-                    catch (Exception ex)
+                    catch (Exception exception)
                     {
                         transaction.Rollback();
-                        System.Diagnostics.Debug.WriteLine($"Error in AddGameWithItems: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Error in AddGameWithItems: {exception.Message}");
                         throw;
                     }
                 }
@@ -347,7 +346,6 @@ namespace Steampunks.DataLink
             }
         }
 
-
         public string GetItemImagePath(Item item)
         {
             try
@@ -366,10 +364,10 @@ namespace Steampunks.DataLink
                 System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {exception.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {exception.StackTrace}");
                 return "ms-appx:///Assets/img/games/default-item.png";
             }
         }
