@@ -18,7 +18,7 @@ namespace Steampunks.Repository.Trade
     /// </summary>
     public class TradeRepository : ITradeRepository
     {
-        private DatabaseConnector? dataBaseConnector;
+        private IDatabaseConnector? dataBaseConnector;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TradeRepository"/> class.
@@ -26,6 +26,15 @@ namespace Steampunks.Repository.Trade
         public TradeRepository()
         {
             this.dataBaseConnector = new DatabaseConnector();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TradeRepository"/> class.
+        /// </summary>
+        /// <param name="databaseConnector">the database connector.</param>
+        public TradeRepository(IDatabaseConnector databaseConnector)
+        {
+            this.dataBaseConnector = databaseConnector;
         }
 
         /// <inheritdoc/>
@@ -68,9 +77,9 @@ namespace Steampunks.Repository.Trade
                                 reader.GetString(reader.GetOrdinal("SourceUsername")));
                             sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
 
-                            var destinationUser = new User(
+                            var destUser = new User(
                                 reader.GetString(reader.GetOrdinal("DestUsername")));
-                            destinationUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
 
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
@@ -81,7 +90,7 @@ namespace Steampunks.Repository.Trade
 
                             var trade = new ItemTrade(
                                 sourceUser,
-                                destinationUser,
+                                destUser,
                                 game,
                                 reader.GetString(reader.GetOrdinal("TradeDescription")));
 
@@ -186,9 +195,9 @@ namespace Steampunks.Repository.Trade
                                 reader.GetString(reader.GetOrdinal("SourceUsername")));
                             sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
 
-                            var destinationUser = new User(
+                            var destUser = new User(
                                 reader.GetString(reader.GetOrdinal("DestUsername")));
-                            destinationUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
 
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
@@ -199,7 +208,7 @@ namespace Steampunks.Repository.Trade
 
                             var trade = new ItemTrade(
                                 sourceUser,
-                                destinationUser,
+                                destUser,
                                 game,
                                 reader.GetString(reader.GetOrdinal("TradeDescription")));
                             trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
@@ -369,11 +378,12 @@ namespace Steampunks.Repository.Trade
                             // If destination user accepts, mark trade as completed since source user already accepted
                             command.Parameters.AddWithValue("@TradeStatus", trade.AcceptedByDestinationUser ? "Completed" : trade.TradeStatus);
                             command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
+
                             await command.ExecuteNonQueryAsync();
                         }
 
                         // If the destination user accepted, transfer the items
-                        if (trade.AcceptedByDestinationUser && trade.AcceptedBySourceUser)
+                        if (trade.AcceptedByDestinationUser)
                         {
                             // Get all items involved in the trade
                             var itemsToTransfer = new List<(int ItemId, bool IsSourceUserItem)>();
@@ -421,18 +431,18 @@ namespace Steampunks.Repository.Trade
                         await transaction.CommitAsync();
                         System.Diagnostics.Debug.WriteLine($"Trade {trade.TradeId} updated successfully. Status: {trade.TradeStatus}");
                     }
-                    catch (Exception tradeUpdatingException)
+                    catch (Exception ex)
                     {
                         try
                         {
                             await transaction.RollbackAsync();
                         }
-                        catch (Exception rollbackException)
+                        catch (Exception rollbackEx)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error rolling back transaction: {rollbackException.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error rolling back transaction: {rollbackEx.Message}");
                         }
 
-                        System.Diagnostics.Debug.WriteLine($"Error updating trade: {tradeUpdatingException.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
                         throw;
                     }
                 }
@@ -555,13 +565,13 @@ namespace Steampunks.Repository.Trade
                     }
                 }
             }
-            catch (Exception getUserInventoryException)
+            catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {getUserInventoryException.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {getUserInventoryException.StackTrace}");
-                if (getUserInventoryException.InnerException != null)
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {getUserInventoryException.InnerException.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 }
 
                 throw;
@@ -588,10 +598,10 @@ namespace Steampunks.Repository.Trade
                 System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
             }
-            catch (Exception getItemImagePathException)
+            catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {getItemImagePathException.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {getItemImagePathException.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 return "ms-appx:///Assets/img/games/default-item.png";
             }
         }
