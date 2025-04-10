@@ -11,15 +11,10 @@ namespace Steampunks.DataLink
     public interface IDatabaseConnector
     {
         SqlConnection GetConnection();
-
+        SqlConnection GetNewConnection();
         Task OpenConnectionAsync();
-
         void CloseConnection();
-
         string GetItemImagePath(Item item);
-
-        public SqlConnection GetNewConnection();
-
-        User? GetCurrentUser();
+        User GetCurrentUser();
     }
 }

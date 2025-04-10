@@ -44,21 +44,24 @@ namespace Steampunks.Views
             this.ViewModel = new InventoryViewModel(inventoryService);
             this.DataContext = this;
 
-            this.Loaded += InventoryPage_Loaded;
-            // Subscribe to user selection changes.
-            this.UserComboBox.SelectionChanged += OnUserSelectionChanged;
-        }
+            this.Loaded += this.InventoryPage_Loaded;
 
-        private async void InventoryPage_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Call the asynchronous initialization method.
-            await this.ViewModel.InitializeAsync();
+            // Subscribe to user selection changes.
+            this.UserComboBox.SelectionChanged += this.OnUserSelectionChanged;
         }
 
         /// <summary>
         /// Gets the view model for this page.
         /// </summary>
         public InventoryViewModel? ViewModel { get; private set; }
+
+        private async void InventoryPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (this.ViewModel != null)
+            {
+                await this.ViewModel.InitializeAsync();
+            }
+        }
 
         private async void OnUserSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -82,7 +85,7 @@ namespace Steampunks.Views
         /// </summary>
         private void OnInventoryItemClicked(object sender, ItemClickEventArgs e)
         {
-            if (e.ClickedItem is Item selectedItem)
+            if (e.ClickedItem is Item selectedItem && this.ViewModel != null)
             {
                 this.ViewModel.SelectedItem = selectedItem;
             }
@@ -132,6 +135,7 @@ namespace Steampunks.Views
                 {
                     // Delegate the sale operation to the view-model.
                     bool success = await this.ViewModel.SellItemAsync(selectedItem);
+
                     // Refresh inventory after selling.
                     await this.ViewModel.LoadInventoryItemsAsync();
 

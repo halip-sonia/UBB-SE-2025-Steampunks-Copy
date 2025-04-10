@@ -64,12 +64,6 @@ namespace Steampunks.Views
         private const string DeclineTradeErrorPrefix = "Error declining trade: ";
         private const int NoSelectionIndex = -1;
 
-        private readonly DatabaseConnector databaseConnector;
-
-        private readonly ITradeService tradeService;
-        private readonly IUserService userService;
-        private readonly IGameService gameService;
-
         private User? currentUser;
         private User? recipientUser;
         private ObservableCollection<Item> itemsOfferedByCurrentUser;
@@ -83,10 +77,15 @@ namespace Steampunks.Views
         public TradingPage()
         {
             this.InitializeComponent();
-            this.tradeService = new TradeService(new TradeRepository());
-            this.userService = new UserService(new UserRepository());
-            this.gameService = new GameService(new GameRepository(this.databaseConnector));
-            this.ViewModel = new TradeViewModel(this.tradeService, this.userService, this.gameService);
+            ITradeRepository tradeRepository = new TradeRepository();
+            IUserRepository userRepository = new UserRepository();
+            IGameRepository gameRepository = new GameRepository();
+            ITradeService tradeService = new TradeService(tradeRepository);
+            IUserService userService = new UserService(userRepository);
+            IGameService gameService = new GameService(gameRepository);
+
+            this.ViewModel = new TradeViewModel(tradeService, userService, gameService);
+
             this.ActiveTrades = new ObservableCollection<ItemTrade>();
             this.TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
             this.itemsOfferedByCurrentUser = new ObservableCollection<Item>();
@@ -100,6 +99,8 @@ namespace Steampunks.Views
             this.SelectedDestinationItemsListView.ItemsSource = this.selectedItemsFromRecipientUserInventory;
 
             this.LoadUsers();
+            this.LoadActiveTrades();
+            this.LoadTradeHistoryAsync();
             this.LoadGames();
         }
 
@@ -132,8 +133,6 @@ namespace Steampunks.Views
                     this.UserComboBox.SelectedItem = allUsers.FirstOrDefault(user => user.UserId == loggedInUser.UserId);
                 }
 
-                this.LoadActiveTrades();
-                this.LoadTradeHistory();
             }
             catch (Exception exception)
             {
@@ -299,7 +298,7 @@ namespace Steampunks.Views
 
             try
             {
-                var activeTrades = await this.tradeService.GetActiveTradesAsync(this.currentUser.UserId);
+                var activeTrades = await this.ViewModel.GetActiveTradesAsync(this.currentUser.UserId);
                 this.ActiveTrades.Clear();
 
                 foreach (var trade in activeTrades)
@@ -321,7 +320,7 @@ namespace Steampunks.Views
         /// <exception cref="Exception">
         /// Thrown if trade history data could not be retrieved or processed.
         /// </exception>
-        private async void LoadTradeHistory()
+        private async void LoadTradeHistoryAsync()
         {
             if (this.currentUser == null)
             {
@@ -520,7 +519,7 @@ namespace Steampunks.Views
 
                 this.SuccessMessage.Text = SuccessTradeCreated;
                 this.LoadActiveTrades();
-                this.LoadTradeHistory();
+                this.LoadTradeHistoryAsync();
             }
             catch (Exception exception)
             {
@@ -567,7 +566,7 @@ namespace Steampunks.Views
                 this.ViewModel.AcceptTrade(this.ViewModel.SelectedTrade);
                 this.ViewModel.SelectedTrade = null;
                 this.LoadActiveTrades();
-                this.LoadTradeHistory();
+                this.LoadTradeHistoryAsync();
             }
             catch (Exception exception)
             {
@@ -595,7 +594,7 @@ namespace Steampunks.Views
                 await this.ViewModel.DeclineTradeAsync(this.ViewModel.SelectedTrade);
                 this.ViewModel.SelectedTrade = null;
                 this.LoadActiveTrades();
-                this.LoadTradeHistory();
+                this.LoadTradeHistoryAsync();
             }
             catch (Exception exception)
             {

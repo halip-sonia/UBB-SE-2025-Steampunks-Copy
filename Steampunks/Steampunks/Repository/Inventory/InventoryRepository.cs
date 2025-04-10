@@ -84,6 +84,17 @@ namespace Steampunks.Repository.Inventory
                     }
                 }
             }
+            catch (Exception getItemsException)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {getItemsException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {getItemsException.StackTrace}");
+                if (getItemsException.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {getItemsException.InnerException.Message}");
+                }
+
+                throw;
+            }
             finally
             {
                 this.dataBaseConnector.CloseConnection();

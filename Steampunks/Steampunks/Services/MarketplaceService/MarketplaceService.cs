@@ -18,7 +18,6 @@ namespace Steampunks.Services.MarketplaceService
     public class MarketplaceService : IMarketplaceService
     {
         private readonly IMarketplaceRepository marketplaceRepository;
-        private readonly DatabaseConnector dataBaseConnector;
         private User currentUser;
 
         /// <summary>
@@ -26,7 +25,7 @@ namespace Steampunks.Services.MarketplaceService
         /// </summary>
         /// <param name="marketplaceRepository"> Marketplace repository. </param>
         /// <exception cref="ArgumentNullException"> Thrown if repository is null. </exception>
-        public MarketplaceService(MarketplaceRepository marketplaceRepository)
+        public MarketplaceService(IMarketplaceRepository marketplaceRepository)
         {
             if (marketplaceRepository != null)
             {
@@ -37,8 +36,7 @@ namespace Steampunks.Services.MarketplaceService
                 throw new ArgumentNullException(nameof(marketplaceRepository));
             }
 
-            this.dataBaseConnector = new DatabaseConnector();
-            this.currentUser = this.dataBaseConnector.GetCurrentUser();
+            this.currentUser = this.marketplaceRepository.GetCurrentUser();
         }
 
         /// <summary>
@@ -73,7 +71,7 @@ namespace Steampunks.Services.MarketplaceService
         /// <returns> A list of all Users. </returns>
         public async Task<List<User>> GetAllUsersAsync()
         {
-            return await this.dataBaseConnector.GetAllUsersAsync();
+            return await this.marketplaceRepository.GetAllUsersAsync();
         }
 
         /// <summary>
@@ -185,11 +183,6 @@ namespace Steampunks.Services.MarketplaceService
             if (!item.IsListed)
             {
                 throw new InvalidOperationException("Item is not listed for sale");
-            }
-
-            if (this.currentUser == null)
-            {
-                throw new InvalidOperationException("No user selected");
             }
 
             return await this.marketplaceRepository.BuyItemAsync(item, this.currentUser);
