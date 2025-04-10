@@ -84,7 +84,7 @@ namespace Steampunks.Services.TradeService
                 await this.tradeRepository.UpdateItemTradeAsync(trade);
 
                 // If both users have accepted, complete the trade
-                if (trade.AcceptedBySourceUser && trade.AcceptedByDestinationUser)
+                if (trade.AcceptedByDestinationUser)
                 {
                     this.CompleteTrade(trade);
                 }
@@ -123,7 +123,7 @@ namespace Steampunks.Services.TradeService
             return await this.tradeRepository.GetUserInventoryAsync(userId);
         }
 
-        private async void CompleteTrade(ItemTrade trade)
+        public async void CompleteTrade(ItemTrade trade)
         {
             try
             {
