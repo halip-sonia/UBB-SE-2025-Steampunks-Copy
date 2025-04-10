@@ -72,7 +72,7 @@ namespace Steampunks.Repository.Marketplace
             }
             finally
             {
-                await this.databaseConnector.OpenConnectionAsync();
+                await this.databaseConnector.CloseConnectionAsync();
             }
         }
 
@@ -334,7 +334,6 @@ namespace Steampunks.Repository.Marketplace
         /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
         public async Task UpdateItemPriceAsync(Game game, Item item)
         {
-            // await this.databaseConnector.UpdateListingAsync(item);
             using (var command = new SqlCommand(
                 @"UPDATE Items 
                 SET Price = @Price
