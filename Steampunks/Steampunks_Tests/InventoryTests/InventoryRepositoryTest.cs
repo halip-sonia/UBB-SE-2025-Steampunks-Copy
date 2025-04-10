@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
@@ -75,58 +75,6 @@ namespace Steampunks.Repository.InventoryTests
         }
 
         [Test]
-        public void GetItemsFromInventoryAsync_NullGame_ThrowsArgumentNullException()
-        {
-            Assert.ThrowsAsync<ArgumentNullException>(async () =>
-                await repository.GetItemsFromInventoryAsync(null));
-        }
-
-        [Test]
-        public async Task GetItemsFromInventoryAsync_ValidGame_ReturnsCorrectItems()
-        {
-            // Arrange: Create a Game.
-            var game = new Game("Test Game", 9.99f, "Adventure", "Test Description");
-            game.SetGameId(100); // This value will be used in the Items table via CorrespondingGameId.
-
-            // Create a dummy user as well if needed by your business logic.
-            var user = new User("testuser");
-            user.SetUserId(50);
-
-            // Insert a dummy item row into dbo.Items using the column "CorrespondingGameId".
-            using (var connection = databaseConnector.GetConnection())
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = @"
-                        INSERT INTO dbo.Items (CorrespondingGameId, ItemName, Price, Description, IsListed)
-                        VALUES (@gameId, @itemName, @price, @description, @isListed);
-                    ";
-                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
-                    command.Parameters.Add(new SqlParameter("@itemName", "Test Item"));
-                    command.Parameters.Add(new SqlParameter("@price", 19.99));
-                    command.Parameters.Add(new SqlParameter("@description", "Item Description"));
-                    command.Parameters.Add(new SqlParameter("@isListed", false));
-                    await command.ExecuteNonQueryAsync();
-                }
-                connection.Close();
-            }
-
-            // Act: Retrieve items via the repository.
-            var items = await repository.GetItemsFromInventoryAsync(game);
-
-            // Assert: Verify that the returned item data is correct.
-            Assert.IsNotNull(items, "Returned item list should not be null");
-            Assert.AreEqual(1, items.Count, "There should be one item returned");
-
-            var item = items[0];
-            Assert.AreEqual("Test Item", item.ItemName, "ItemName should match");
-            Assert.AreEqual(19.99f, item.Price, "Price should match");
-            Assert.AreEqual("Item Description", item.Description, "Description should match");
-            Assert.IsFalse(item.IsListed, "IsListed should be false as per the inserted data");
-        }
-
-        [Test]
         public async Task AddItemToInventoryAsync_ValidParameters_InsertsItem()
         {
             // Arrange: Create a Game, a User, and an Item.
@@ -199,6 +147,80 @@ namespace Steampunks.Repository.InventoryTests
                 connection.Close();
             }
         }
+
+        [Test]
+        public void GetItemsFromInventoryAsync_NullGame_ThrowsArgumentNullException()
+        {
+            Assert.ThrowsAsync<ArgumentNullException>(async () =>
+                await repository.GetItemsFromInventoryAsync(null));
+        }
+
+        [Test]
+        public async Task GetItemsFromInventoryAsync_ValidGame_ReturnsCorrectItems()
+        {
+            // Arrange: Create a Game.
+            var game = new Game("Test Game", 9.99f, "Adventure", "Test Description");
+            game.SetGameId(100); // This value will be used in the Items table via CorrespondingGameId.
+
+            // Create a dummy user as well if needed by your business logic.
+            //var user = new User("testuser");
+            //user.SetUserId(50);
+
+            var user = new User("newUser");
+            user.SetUserId(200);
+
+
+
+            // Insert a dummy item row into dbo.Items using the column "CorrespondingGameId".
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        SET IDENTITY_INSERT dbo.Users ON;
+                        INSERT INTO dbo.Users (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
+                        VALUES (@UserId, @Username, 0, 0, 0);
+                        SET IDENTITY_INSERT dbo.Users OFF;
+                    ";
+                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                    command.Parameters.Add(new SqlParameter("@Username", user.Username));
+                    await command.ExecuteNonQueryAsync();
+                }
+                //connection.Close();
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        INSERT INTO dbo.Items (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                        VALUES (@gameId, @itemName, @price, @description, @isListed);
+                    ";
+                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@itemName", "Test Item"));
+                    command.Parameters.Add(new SqlParameter("@price", 19.99));
+                    command.Parameters.Add(new SqlParameter("@description", "Item Description"));
+                    command.Parameters.Add(new SqlParameter("@isListed", false));
+                    await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+
+            // Act: Retrieve items via the repository.
+            var items = await repository.GetItemsFromInventoryAsync(game);
+
+            // Assert: Verify that the returned item data is correct.
+            Assert.IsNotNull(items, "Returned item list should not be null");
+            Assert.AreEqual(1, items.Count, "There should be one item returned");
+
+            var item = items[0];
+            Assert.AreEqual("Test Item", item.ItemName, "ItemName should match");
+            Assert.AreEqual(19.99f, item.Price, "Price should match");
+            Assert.AreEqual("Item Description", item.Description, "Description should match");
+            Assert.IsFalse(item.IsListed, "IsListed should be false as per the inserted data");
+        }
+
+        
 
         [Test]
         public async Task SellItemAsync_ValidItem_CompletesSale()
