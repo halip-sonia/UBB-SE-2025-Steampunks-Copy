@@ -8,7 +8,7 @@ using Steampunks.Domain.Entities;
 using Steampunks.DataLink;
 using Steampunks.Utils;
 
-namespace Steampunks.Repository.IntegrationTests
+namespace Steampunks.Repository.InventoryTests
 {
     [TestFixture]
     public class InventoryRepositoryIntegrationTests
