@@ -77,9 +77,9 @@ namespace Steampunks.Repository.Trade
                                 reader.GetString(reader.GetOrdinal("SourceUsername")));
                             sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
 
-                            var destUser = new User(
+                            var destinationUser = new User(
                                 reader.GetString(reader.GetOrdinal("DestUsername")));
-                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+                            destinationUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
 
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
@@ -90,7 +90,7 @@ namespace Steampunks.Repository.Trade
 
                             var trade = new ItemTrade(
                                 sourceUser,
-                                destUser,
+                                destinationUser,
                                 game,
                                 reader.GetString(reader.GetOrdinal("TradeDescription")));
 
@@ -195,9 +195,9 @@ namespace Steampunks.Repository.Trade
                                 reader.GetString(reader.GetOrdinal("SourceUsername")));
                             sourceUser.SetUserId(reader.GetInt32(reader.GetOrdinal("SourceUserId")));
 
-                            var destUser = new User(
+                            var destinationUser = new User(
                                 reader.GetString(reader.GetOrdinal("DestUsername")));
-                            destUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
+                            destinationUser.SetUserId(reader.GetInt32(reader.GetOrdinal("DestUserId")));
 
                             var game = new Game(
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
@@ -208,7 +208,7 @@ namespace Steampunks.Repository.Trade
 
                             var trade = new ItemTrade(
                                 sourceUser,
-                                destUser,
+                                destinationUser,
                                 game,
                                 reader.GetString(reader.GetOrdinal("TradeDescription")));
                             trade.SetTradeId(reader.GetInt32(reader.GetOrdinal("TradeId")));
@@ -431,18 +431,18 @@ namespace Steampunks.Repository.Trade
                         await transaction.CommitAsync();
                         System.Diagnostics.Debug.WriteLine($"Trade {trade.TradeId} updated successfully. Status: {trade.TradeStatus}");
                     }
-                    catch (Exception ex)
+                    catch (Exception tradeUpdatingException)
                     {
                         try
                         {
                             await transaction.RollbackAsync();
                         }
-                        catch (Exception rollbackEx)
+                        catch (Exception rollbackException)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error rolling back transaction: {rollbackEx.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error rolling back transaction: {rollbackException.Message}");
                         }
 
-                        System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Error updating trade: {tradeUpdatingException.Message}");
                         throw;
                     }
                 }
@@ -565,13 +565,13 @@ namespace Steampunks.Repository.Trade
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception getUserInventoryException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {getUserInventoryException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {getUserInventoryException.StackTrace}");
+                if (getUserInventoryException.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {getUserInventoryException.InnerException.Message}");
                 }
 
                 throw;
@@ -598,10 +598,10 @@ namespace Steampunks.Repository.Trade
                 System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
             }
-            catch (Exception ex)
+            catch (Exception getItemImagePathException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {getItemImagePathException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {getItemImagePathException.StackTrace}");
                 return "ms-appx:///Assets/img/games/default-item.png";
             }
         }
