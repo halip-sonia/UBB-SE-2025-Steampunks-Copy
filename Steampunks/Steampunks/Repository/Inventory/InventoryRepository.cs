@@ -56,14 +56,20 @@ namespace Steampunks.Repository.Inventory
 
             try
             {
+                var currentUser = this.dataBaseConnector.GetCurrentUser();
+                if (currentUser == null)
+                {
+                    throw new InvalidOperationException("Current user not found.");
+                }
+
                 using (var command = new SqlCommand(query, this.dataBaseConnector.GetConnection()))
                 {
                     command.Parameters.AddWithValue("@GameId", game.GameId);
-                    command.Parameters.AddWithValue("@UserId", this.dataBaseConnector.GetCurrentUser().UserId);
+                    command.Parameters.AddWithValue("@UserId", currentUser.UserId);
                     await this.dataBaseConnector.OpenConnectionAsync();
                     using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                     {
-                        while (await reader.ReadAsync().ConfigureAwait(false))
+                        while (await reader.ReadAsync())
                         {
                             var item = new Item(
                                 reader.GetString(reader.GetOrdinal("ItemName")),

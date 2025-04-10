@@ -1,176 +1,312 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Data;
 using Microsoft.Data.SqlClient;
-using Moq;
+using System.Threading.Tasks;
 using NUnit.Framework;
-using Steampunks.Repository.Inventory;           // Contains InventoryRepository
-using Steampunks.Domain.Entities;                  // Contains domain classes: Item, Game, User, etc.
-using Steampunks.DataLink;                         // Contains IDatabaseConnector
+using Steampunks.Repository.Inventory;
+using Steampunks.Domain.Entities;
+using Steampunks.DataLink;
+using Steampunks.Utils;
 
-namespace Steampunks.Repository.Tests
+namespace Steampunks.Repository.IntegrationTests
 {
     [TestFixture]
-    public class InventoryRepositoryTests
+    public class InventoryRepositoryIntegrationTests
     {
         private InventoryRepository repository;
-        private Mock<IDatabaseConnector> mockDbConnector;
-        private Mock<SqlConnection> mockConnection;
-        private Mock<SqlCommand> mockCommand;
-        private Mock<SqlDataReader> mockReader;
+        private IDatabaseConnector databaseConnector;
+        private const string TestConnectionString = Configuration.CONNECTIONSTRINGDARIUS;
 
-        [SetUp]
-        public void Setup()
+        [OneTimeSetUp]
+        public async Task OneTimeSetUp()
         {
-            // Arrange: Create a mock for IDatabaseConnector.
-            mockDbConnector = new Mock<IDatabaseConnector>();
+            databaseConnector = new DatabaseConnector();
+            repository = new InventoryRepository(databaseConnector);
 
-            // Create a fake SqlConnection using the constructor that accepts a connection string.
-            // This ensures that the returned object is of type Microsoft.Data.SqlClient.SqlConnection.
-            mockConnection = new Mock<SqlConnection>("FakeConnectionString");
+            // Clean the database – disable constraints in order to avoid deletion conflicts.
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        ALTER TABLE dbo.UserInventory NOCHECK CONSTRAINT ALL;
+                        ALTER TABLE dbo.Items NOCHECK CONSTRAINT ALL;
+                        ALTER TABLE dbo.Games NOCHECK CONSTRAINT ALL;
+                        ALTER TABLE dbo.Users NOCHECK CONSTRAINT ALL;
+                    ";
+                    await command.ExecuteNonQueryAsync();
 
-            // Assume the connector returns our fake SqlConnection.
-            mockDbConnector.Setup(x => x.GetConnection()).Returns(mockConnection.Object);
+                    // Delete data from dependent tables first.
+                    command.CommandText = @"
+                        DELETE FROM dbo.UserInventory;
+                        DELETE FROM dbo.Items;
+                        DELETE FROM dbo.Games;
+                        DELETE FROM dbo.Users;
+                    ";
+                    await command.ExecuteNonQueryAsync();
 
-            // Simulate connection open and close operations.
-            mockDbConnector.Setup(x => x.OpenConnectionAsync()).Returns(Task.CompletedTask);
-            mockDbConnector.Setup(x => x.CloseConnection());
+                    //command.CommandText = @"
+                    //    ALTER TABLE dbo.UserInventory WITH CHECK CHECK CONSTRAINT ALL;
+                    //    ALTER TABLE dbo.Items WITH CHECK CHECK CONSTRAINT ALL;
+                    //    ALTER TABLE dbo.Games WITH CHECK CHECK CONSTRAINT ALL;
+                    //    ALTER TABLE dbo.Users WITH CHECK CHECK CONSTRAINT ALL;
+                    //";
+                    //await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+        }
 
-            // Instantiate the repository with the injected connector.
-            repository = new InventoryRepository(mockDbConnector.Object);
+        //[SetUp]
+        //public async Task Setup()
+        //{
+        //    // Additional per-test cleanup if needed – for example, clear Items.
+        //    using (var connection = databaseConnector.GetConnection())
+        //    {
+        //        await connection.OpenAsync();
+        //        using (var command = connection.CreateCommand())
+        //        {
+        //            command.CommandText = "DELETE FROM dbo.Items;";
+        //            await command.ExecuteNonQueryAsync();
+        //        }
+        //        connection.Close();
+        //    }
+        //}
+
+        [Test]
+        public async Task AddItemToInventoryAsync_ValidParameters_InsertsItem()
+        {
+            // Arrange: Create a Game, a User, and an Item.
+            var game = new Game("Test Game", 9.99f, "RPG", "Game Description");
+            game.SetGameId(101);
+            var user = new User("newUser");
+            user.SetUserId(200);
+            var item = new Item("New Item", game, 5.99f, "Item Desc");
+
+            // Insert the dummy Game into dbo.Games.
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        SET IDENTITY_INSERT dbo.Games ON;
+                        INSERT INTO dbo.Games (GameId, Title, Price, Genre, Description, Status, RecommendedSpecs, MinimumSpecs)
+                        VALUES (@GameId, @Title, @Price, @Genre, @Description, @Status, NULL, NULL);
+                        SET IDENTITY_INSERT dbo.Games OFF;
+                    ";
+                    command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@Title", game.Title));
+                    command.Parameters.Add(new SqlParameter("@Price", game.Price));
+                    command.Parameters.Add(new SqlParameter("@Genre", game.Genre));
+                    command.Parameters.Add(new SqlParameter("@Description", game.Description));
+                    command.Parameters.Add(new SqlParameter("@Status", "Active"));
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                // Insert the dummy User into dbo.Users.
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        SET IDENTITY_INSERT dbo.Users ON;
+                        INSERT INTO dbo.Users (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
+                        VALUES (@UserId, @Username, 0, 0, 0);
+                        SET IDENTITY_INSERT dbo.Users OFF;
+                    ";
+                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                    command.Parameters.Add(new SqlParameter("@Username", user.Username));
+                    await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+
+            // Act: Call the repository method to add the item.
+            // (Assume that inside AddItemToInventoryAsync, the repository inserts into dbo.Items using "CorrespondingGameId" and
+            // inserts into the linking table (dbo.UserInventory) to reference the user.)
+            await repository.AddItemToInventoryAsync(game, item, user);
+
+            // Assert: Query the dbo.Items table (which uses "CorrespondingGameId") to verify insertion.
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        SELECT COUNT(*) 
+                        FROM dbo.UserInventory 
+                        WHERE UserId = @UserId AND GameId = @GameId AND ItemId = @ItemId;
+                    ";
+                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@ItemId", item.ItemId));
+
+                    int count = (int)await command.ExecuteScalarAsync();
+                    Assert.AreEqual(1, count, "Item should have been inserted into dbo.Items.");
+                }
+                connection.Close();
+            }
         }
 
         [Test]
         public void GetItemsFromInventoryAsync_NullGame_ThrowsArgumentNullException()
         {
-            // Arrange
-            Game nullGame = null;
-
-            // Act & Assert: Expect an ArgumentNullException when null Game is provided.
             Assert.ThrowsAsync<ArgumentNullException>(async () =>
-                await repository.GetItemsFromInventoryAsync(nullGame));
+                await repository.GetItemsFromInventoryAsync(null));
         }
 
         [Test]
         public async Task GetItemsFromInventoryAsync_ValidGame_ReturnsCorrectItems()
         {
-            // Arrange: Create a valid Game object.
+            // Arrange: Create a Game.
             var game = new Game("Test Game", 9.99f, "Adventure", "Test Description");
-            game.SetGameId(100);
+            game.SetGameId(100); // This value will be used in the Items table via CorrespondingGameId.
 
-            // Create and configure a fake current User.
-            var user = new User("testuser");
-            user.SetUserId(50);
-            mockDbConnector.Setup(x => x.GetCurrentUser()).Returns(user);
+            // Create a dummy user as well if needed by your business logic.
+            //var user = new User("testuser");
+            //user.SetUserId(50);
 
-            // Arrange a fake DbDataReader to simulate one record.
-            mockReader = new Mock<SqlDataReader>();
-            int readCallCount = 0;
-            mockReader.Setup(x => x.ReadAsync(It.IsAny<CancellationToken>()))
-                      .ReturnsAsync(() => readCallCount++ == 0); // returns true on first call, then false
-
-            // Set up column ordinal mappings (as used in the repository query).
-            mockReader.Setup(x => x.GetOrdinal("ItemId")).Returns(0);
-            mockReader.Setup(x => x.GetOrdinal("ItemName")).Returns(1);
-            mockReader.Setup(x => x.GetOrdinal("Price")).Returns(2);
-            mockReader.Setup(x => x.GetOrdinal("Description")).Returns(3);
-            mockReader.Setup(x => x.GetOrdinal("IsListed")).Returns(4);
-
-            // Provide fake data values.
-            mockReader.Setup(x => x.GetInt32(0)).Returns(10);
-            mockReader.Setup(x => x.GetString(1)).Returns("Test Item");
-            mockReader.Setup(x => x.GetDouble(2)).Returns(19.99);
-            mockReader.Setup(x => x.GetString(3)).Returns("Item Description");
-            mockReader.Setup(x => x.GetBoolean(4)).Returns(false);
-
-            // Arrange a fake command that returns our fake reader.
-            mockCommand = new Mock<SqlCommand>();
-            mockCommand.Setup(x => x.ExecuteReaderAsync(It.IsAny<CancellationToken>()))
-                       .ReturnsAsync(mockReader.Object);
-
-            // Have the fake connection return our fake command.
-            mockConnection.Setup(x => x.CreateCommand()).Returns(mockCommand.Object);
-
-            // Act: Call the method under test.
-            List<Item> items = await repository.GetItemsFromInventoryAsync(game);
-
-            // Assert: Verify that the returned list contains the expected item.
-            Assert.IsNotNull(items, "Returned item list should not be null");
-            Assert.AreEqual(1, items.Count, "There should be one item returned");
-            var item = items[0];
-            Assert.AreEqual(10, item.ItemId, "ItemId should match the fake value");
-            Assert.AreEqual("Test Item", item.ItemName, "ItemName should match the fake value");
-            Assert.AreEqual(19.99f, item.Price, "Price should match the fake value");
-            Assert.AreEqual("Item Description", item.Description, "Description should match the fake value");
-            Assert.IsFalse(item.IsListed, "IsListed should be false as per fake data");
-
-            // Verify that the connector’s Open and Close methods were called exactly once.
-            mockDbConnector.Verify(x => x.OpenConnectionAsync(), Times.Once);
-            mockDbConnector.Verify(x => x.CloseConnection(), Times.Once);
-        }
-
-        [Test]
-        public async Task AddItemToInventoryAsync_ValidParameters_ExecutesInsertCommand()
-        {
-            // Arrange: Create dummy objects for Game, Item, and User.
-            var game = new Game("Test Game", 9.99f, "RPG", "Game Description");
-            game.SetGameId(101);
-            var item = new Item("New Item", game, 5.99f, "Item Desc");
-            item.SetItemId(20);
             var user = new User("newUser");
             user.SetUserId(200);
 
-            // Arrange a fake command that simulates a successful non-query execution.
-            mockCommand = new Mock<SqlCommand>();
-            mockCommand.Setup(x => x.ExecuteNonQueryAsync(It.IsAny<CancellationToken>()))
-                       .ReturnsAsync(1);
 
-            // Configure the connection to return our fake command.
-            mockConnection.Setup(x => x.CreateCommand()).Returns(mockCommand.Object);
 
-            // Act: Execute the method.
-            await repository.AddItemToInventoryAsync(game, item, user);
+            // Insert a dummy item row into dbo.Items using the column "CorrespondingGameId".
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
 
-            // Assert: Confirm that the non-query command was executed and connection methods were invoked.
-            mockCommand.Verify(x => x.ExecuteNonQueryAsync(It.IsAny<CancellationToken>()), Times.Once);
-            mockDbConnector.Verify(x => x.OpenConnectionAsync(), Times.Once);
-            mockDbConnector.Verify(x => x.CloseConnection(), Times.Once);
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        SET IDENTITY_INSERT dbo.Users ON;
+                        INSERT INTO dbo.Users (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
+                        VALUES (@UserId, @Username, 0, 0, 0);
+                        SET IDENTITY_INSERT dbo.Users OFF;
+                    ";
+                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                    command.Parameters.Add(new SqlParameter("@Username", user.Username));
+                    await command.ExecuteNonQueryAsync();
+                }
+                //connection.Close();
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        INSERT INTO dbo.Items (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                        VALUES (@gameId, @itemName, @price, @description, @isListed);
+                    ";
+                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@itemName", "Test Item"));
+                    command.Parameters.Add(new SqlParameter("@price", 19.99));
+                    command.Parameters.Add(new SqlParameter("@description", "Item Description"));
+                    command.Parameters.Add(new SqlParameter("@isListed", false));
+                    await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+
+            // Act: Retrieve items via the repository.
+            var items = await repository.GetItemsFromInventoryAsync(game);
+
+            // Assert: Verify that the returned item data is correct.
+            Assert.IsNotNull(items, "Returned item list should not be null");
+            Assert.AreEqual(1, items.Count, "There should be one item returned");
+
+            var item = items[0];
+            Assert.AreEqual("Test Item", item.ItemName, "ItemName should match");
+            Assert.AreEqual(19.99f, item.Price, "Price should match");
+            Assert.AreEqual("Item Description", item.Description, "Description should match");
+            Assert.IsFalse(item.IsListed, "IsListed should be false as per the inserted data");
         }
 
+        
+
         [Test]
-        public async Task SellItemAsync_ValidItem_CommitsTransactionAndReturnsTrue()
+        public async Task SellItemAsync_ValidItem_CompletesSale()
         {
-            // Arrange: Create a Game and Item for selling.
+            // Arrange: Create a Game and an Item.
             var game = new Game("Sell Game", 15.99f, "Action", "Some Description");
             game.SetGameId(300);
             var item = new Item("Sellable Item", game, 9.99f, "To Sell");
-            item.SetItemId(30);
 
-            // Arrange a fake transaction from the connection.
-            var mockTransaction = new Mock<SqlTransaction>();
-            mockConnection.Setup(x => x.BeginTransaction()).Returns(mockTransaction.Object);
+            // Insert a dummy item row into dbo.Items using "CorrespondingGameId".
+            // Note: We insert with IsListed = 0 (unsold) so that the sale operation can update it.
+            int insertedItemId;
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                INSERT INTO dbo.Items (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                OUTPUT INSERTED.ItemId
+                VALUES (@gameId, @itemName, @price, @description, @isListed);
+            ";
+                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@itemName", "Sellable Item"));
+                    command.Parameters.Add(new SqlParameter("@price", 9.99));
+                    command.Parameters.Add(new SqlParameter("@description", "To Sell"));
+                    // Initially unsold.
+                    command.Parameters.Add(new SqlParameter("@isListed", false));
+                    insertedItemId = (int)await command.ExecuteScalarAsync();
+                }
+                connection.Close();
+            }
+            item.SetItemId(insertedItemId);
 
-            // Arrange a fake command for the update statement.
-            mockCommand = new Mock<SqlCommand>();
-            mockCommand.Setup(x => x.ExecuteNonQueryAsync(It.IsAny<CancellationToken>()))
-                       .ReturnsAsync(1);
-            // Set the connection to return our fake command.
-            mockConnection.Setup(x => x.CreateCommand()).Returns(mockCommand.Object);
-
-            // Act: Call SellItemAsync.
+            // Act: Call SellItemAsync – the repository should update the item
+            // to mark it as sold (i.e. set IsListed to 1).
             bool result = await repository.SellItemAsync(item);
 
-            // Assert: The method should return true and the transaction should be committed.
-            Assert.IsTrue(result, "SellItemAsync should return true on a successful operation");
-            mockDbConnector.Verify(x => x.OpenConnectionAsync(), Times.Once);
-            mockDbConnector.Verify(x => x.CloseConnection(), Times.Once);
-            mockCommand.Verify(x => x.ExecuteNonQueryAsync(It.IsAny<CancellationToken>()), Times.Once);
-            mockTransaction.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+            // Assert: Verify that SellItemAsync returns true.
+            Assert.IsTrue(result, "SellItemAsync should return true upon successful sale.");
+
+            // Assert: Verify that the item is marked as sold (IsListed = 1).
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT IsListed FROM dbo.Items WHERE ItemId = @itemId;";
+                    command.Parameters.Add(new SqlParameter("@itemId", insertedItemId));
+
+                    bool isListed = (bool)await command.ExecuteScalarAsync();
+                    Assert.IsTrue(isListed, "Item should have been marked as sold (IsListed = true).");
+                }
+                connection.Close();
+            }
         }
 
-        // Additional tests for RemoveItemFromInventoryAsync, GetUserInventoryAsync, GetAllItemsFromInventoryAsync, etc.
-        // would follow a similar arrange-act-assert pattern.
+
+
+        [OneTimeTearDown]
+        public async Task OneTimeTearDown()
+        {
+            // Optionally, clean up test data.
+            using (var connection = databaseConnector.GetConnection())
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        DELETE FROM dbo.UserInventory;
+                        DELETE FROM dbo.Items;
+                        DELETE FROM dbo.Games;
+                        DELETE FROM dbo.Users;
+                    ";
+                    await command.ExecuteNonQueryAsync();
+
+                    command.CommandText = @"
+                        ALTER TABLE dbo.UserInventory WITH CHECK CHECK CONSTRAINT ALL;
+                        ALTER TABLE dbo.Items WITH CHECK CHECK CONSTRAINT ALL;
+                        ALTER TABLE dbo.Games WITH CHECK CHECK CONSTRAINT ALL;
+                        ALTER TABLE dbo.Users WITH CHECK CHECK CONSTRAINT ALL;
+                    ";
+                    await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+        }
     }
 }

@@ -27,7 +27,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.CONNECTIONSTRINGILINCA;
+            this.connectionString = Configuration.CONNECTIONSTRINGSONIA;
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace Steampunks.DataLink
 
             if (this.connection.State != ConnectionState.Open)
             {
-                await this.connection.OpenAsync().ConfigureAwait(false);
+                await this.connection.OpenAsync();
             }
         }
 
@@ -343,7 +343,6 @@ namespace Steampunks.DataLink
                 }
             }
         }
-
 
         public string GetItemImagePath(Item item)
         {
