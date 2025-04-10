@@ -1,4 +1,11 @@
-﻿namespace Steampunks.Repository.GameRepo
+﻿// <copyright file="IGameRepository.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+// <summary>
+//   Service class for accessing and managing Game data.
+// </summary>
+// Refactored by Team ArtAttack, 2025
+namespace Steampunks.Repository.GameRepo
 {
     using System;
     using System.Collections.Generic;
@@ -28,7 +35,7 @@
         /// <returns>
         /// A task with a result of the matching Game, or null if not found.
         /// </returns>
-        Task<Game> GetGameByIdAsync(int gameId);
+        Task<Game?> GetGameByIdAsync(int gameId);
 
         /// <summary>
         /// Asynchronously updates a game's information in the database.
@@ -40,7 +47,7 @@
         /// <summary>
         /// Asynchronously retrieves a list of all games from the database, ordered by title.
         /// </summary>
-        /// <returns>A task that represents the asynchronous operation. 
+        /// <returns>A task that represents the asynchronous operation
         /// The task result contains a list of <see cref="Game"/> objects.</returns>
         Task<List<Game>> GetGamesFromDatabaseAsync();
 
@@ -49,17 +56,17 @@
         /// </summary>
         /// <param name="gameId">The ID of the game to retrieve.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. 
+        /// A task that represents the asynchronous operation.
         /// The task result contains a <see cref="Game"/> object if found; otherwise, <c>null</c>.
         /// </returns>
-        Task<Game> GetGameByIdFromDatabaseAsync(int gameId);
+        Task<Game?> GetGameByIdFromDatabaseAsync(int gameId);
 
         /// <summary>
         /// Asynchronously updates the details of an existing game in the database, excluding the status field.
         /// </summary>
         /// <param name="game">The <see cref="Game"/> object containing updated information.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. 
+        /// A task that represents the asynchronous operation.
         /// The task result contains <c>true</c> if the update was successful; otherwise, <c>false</c>.
         /// </returns>
         Task<bool> UpdateGameFromDatabaseAsync(Game game);
