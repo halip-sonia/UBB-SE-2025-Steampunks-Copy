@@ -161,13 +161,13 @@ namespace Steampunks.Repository.Inventory
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception getUserInventoryException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
+                System.Diagnostics.Debug.WriteLine($"Error in GetUserInventory: {getUserInventoryException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {getUserInventoryException.StackTrace}");
+                if (getUserInventoryException.InnerException != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Inner exception: {getUserInventoryException.InnerException.Message}");
                 }
 
                 throw;
@@ -369,19 +369,19 @@ namespace Steampunks.Repository.Inventory
 
                         return true;
                     }
-                    catch (Exception ex)
+                    catch (Exception transactionException)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Error in transaction: {ex.Message}");
-                        System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                        System.Diagnostics.Debug.WriteLine($"Error in transaction: {transactionException.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Stack trace: {transactionException.StackTrace}");
                         transaction.Rollback();
                         throw;
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception sellingItemException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error selling item: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error selling item: {sellingItemException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {sellingItemException.StackTrace}");
                 return false;
             }
             finally

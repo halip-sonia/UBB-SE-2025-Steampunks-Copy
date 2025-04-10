@@ -46,9 +46,9 @@ namespace Steampunks.Services.TradeService
             {
                 await this.tradeRepository.AddItemTradeAsync(trade);
             }
-            catch (Exception ex)
+            catch (Exception tradeCreationException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error creating trade: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error creating trade: {tradeCreationException.Message}");
                 throw;
             }
         }
@@ -60,9 +60,9 @@ namespace Steampunks.Services.TradeService
             {
                 await this.tradeRepository.UpdateItemTradeAsync(trade);
             }
-            catch (Exception ex)
+            catch (Exception tradeUpdateException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error updating trade: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error updating trade: {tradeUpdateException.Message}");
                 throw;
             }
         }
@@ -89,9 +89,9 @@ namespace Steampunks.Services.TradeService
                     this.CompleteTrade(trade);
                 }
             }
-            catch (Exception ex)
+            catch (Exception tradeAcceptionException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error accepting trade: {tradeAcceptionException.Message}");
                 throw;
             }
         }
@@ -104,9 +104,9 @@ namespace Steampunks.Services.TradeService
                 trade.DeclineTradeRequest();
                 await this.tradeRepository.UpdateItemTradeAsync(trade);
             }
-            catch (Exception ex)
+            catch (Exception tradeDeclineException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error declining trade: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error declining trade: {tradeDeclineException.Message}");
                 throw;
             }
         }
@@ -142,9 +142,9 @@ namespace Steampunks.Services.TradeService
                 trade.MarkTradeAsCompleted();
                 await this.tradeRepository.UpdateItemTradeAsync(trade);
             }
-            catch (Exception ex)
+            catch (Exception tradeCompletingException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error completing trade: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error completing trade: {tradeCompletingException.Message}");
                 throw;
             }
         }
