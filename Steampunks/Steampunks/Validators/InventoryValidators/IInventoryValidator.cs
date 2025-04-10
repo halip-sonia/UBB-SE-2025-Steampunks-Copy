@@ -37,6 +37,11 @@ namespace Steampunks.Validators.InventoryValidator.InventoryValidator
         /// <param name="user">The user to validate.</param>
         void ValidateInventoryOperation(Game game, Item item, User user);
 
+        /// <summary>
+        /// Validates whether an item is eligible to be sold.
+        /// </summary>
+        /// <param name="item">The item to validate.</param>
+        /// <exception cref="InvalidOperationException">Thrown if the item is already listed.</exception>
         void ValidateSellableItem(Item item);
     }
 }

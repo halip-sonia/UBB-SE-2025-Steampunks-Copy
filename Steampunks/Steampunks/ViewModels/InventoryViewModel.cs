@@ -40,14 +40,9 @@ namespace Steampunks.ViewModels
             this.availableUsers = new ObservableCollection<User>();
 
             // Load users and initialize data.
-            //this.LoadUsersAsync().GetAwaiter().GetResult();
-        }
 
-        public async Task InitializeAsync()
-        {
-            await this.LoadUsersAsync();
+            // this.LoadUsersAsync().GetAwaiter().GetResult();
         }
-
 
         /// <inheritdoc/>
         public event PropertyChangedEventHandler PropertyChanged;
@@ -112,6 +107,7 @@ namespace Steampunks.ViewModels
                 {
                     this.selectedGame = value;
                     this.OnPropertyChanged();
+
                     // Update the filtered inventory when the game filter changes.
                     this.UpdateInventoryItemsAsync().ConfigureAwait(false);
                 }
@@ -130,6 +126,7 @@ namespace Steampunks.ViewModels
                 {
                     this.selectedUser = value;
                     this.OnPropertyChanged();
+
                     // When a user is selected, load their inventory.
                     if (this.selectedUser != null)
                     {
@@ -151,6 +148,7 @@ namespace Steampunks.ViewModels
                 {
                     this.searchText = value;
                     this.OnPropertyChanged();
+
                     // Update the filtered inventory when the search text changes.
                     this.UpdateInventoryItemsAsync().ConfigureAwait(false);
                 }
@@ -174,47 +172,18 @@ namespace Steampunks.ViewModels
         }
 
         /// <summary>
-        /// Notifies listeners that a property value has changed.
+        /// Initializes the Users and their inventories.
         /// </summary>
-        /// <param name="propertyName">
-        /// Name of the property that changed.
-        /// </param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        /// <returns>Return a Task for asynchronous operations.</returns>
+        public async Task InitializeAsync()
         {
-            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Asynchronously loads the available users from the service.
-        /// </summary>
-        private async Task LoadUsersAsync()
-        {
-            try
-            {
-                var users = await this.inventoryService.GetAllUsersAsync();
-                this.AvailableUsers.Clear();
-                foreach (var user in users)
-                {
-                    this.AvailableUsers.Add(user);
-                }
-
-                // Set default selected user if available.
-                if (this.AvailableUsers.Any())
-                {
-                    this.SelectedUser = this.AvailableUsers.First();
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log exception details as needed.
-                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
-                this.AvailableUsers.Clear();
-            }
+            await this.LoadUsersAsync();
         }
 
         /// <summary>
         /// Asynchronously loads the inventory items and available games for the selected user.
         /// </summary>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         public async Task LoadInventoryItemsAsync()
         {
             if (this.SelectedUser == null)
@@ -261,6 +230,27 @@ namespace Steampunks.ViewModels
         }
 
         /// <summary>
+        /// Sells an item asynchronously.
+        /// </summary>
+        /// <param name="selectedItem">The item who will be listed as for sale.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task<bool> SellItemAsync(Item selectedItem)
+        {
+            return await this.inventoryService.SellItemAsync(selectedItem);
+        }
+
+        /// <summary>
+        /// Notifies listeners that a property value has changed.
+        /// </summary>
+        /// <param name="propertyName">
+        /// Name of the property that changed.
+        /// </param>
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        /// <summary>
         /// Updates the filtered inventory items based on the current game filter and search text.
         /// </summary>
         private async Task UpdateInventoryItemsAsync()
@@ -296,9 +286,32 @@ namespace Steampunks.ViewModels
             }
         }
 
-        public async Task<bool> SellItemAsync(Item selectedItem)
+        /// <summary>
+        /// Asynchronously loads the available users from the service.
+        /// </summary>
+        private async Task LoadUsersAsync()
         {
-            return await this.inventoryService.SellItemAsync(selectedItem);
+            try
+            {
+                var users = await this.inventoryService.GetAllUsersAsync();
+                this.AvailableUsers.Clear();
+                foreach (var user in users)
+                {
+                    this.AvailableUsers.Add(user);
+                }
+
+                // Set default selected user if available.
+                if (this.AvailableUsers.Any())
+                {
+                    this.SelectedUser = this.AvailableUsers.First();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log exception details as needed.
+                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+                this.AvailableUsers.Clear();
+            }
         }
     }
 }
