@@ -74,6 +74,11 @@ namespace Steampunks.Repository.GameRepo
             this.databaseConnector = databaseConnector ?? throw new ArgumentNullException(nameof(databaseConnector));
         }
 
+        public GameRepository()
+        {
+            this.databaseConnector = new DatabaseConnector();
+        }
+
         /// <summary>
         /// Retrieves all game records from the database.
         /// </summary>

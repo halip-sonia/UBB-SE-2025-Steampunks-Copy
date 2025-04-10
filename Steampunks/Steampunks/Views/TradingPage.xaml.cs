@@ -85,7 +85,7 @@ namespace Steampunks.Views
             this.InitializeComponent();
             this.tradeService = new TradeService(new TradeRepository());
             this.userService = new UserService(new UserRepository());
-            this.gameService = new GameService(new GameRepository(databaseConnector));
+            this.gameService = new GameService(new GameRepository());
             this.ViewModel = new TradeViewModel(this.tradeService, this.userService, this.gameService);
             this.ActiveTrades = new ObservableCollection<ItemTrade>();
             this.TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
@@ -103,7 +103,7 @@ namespace Steampunks.Views
             this.LoadGames();
         }
 
-        private TradeViewModel ViewModel { get; set; }
+        private ITradeViewModel ViewModel { get; set; }
 
         private ObservableCollection<ItemTrade> ActiveTrades { get; set; }
 

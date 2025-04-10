@@ -18,7 +18,7 @@ namespace Steampunks.Repository.Trade
     /// </summary>
     public class TradeRepository : ITradeRepository
     {
-        private DatabaseConnector? dataBaseConnector;
+        private IDatabaseConnector? dataBaseConnector;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TradeRepository"/> class.
@@ -26,6 +26,15 @@ namespace Steampunks.Repository.Trade
         public TradeRepository()
         {
             this.dataBaseConnector = new DatabaseConnector();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TradeRepository"/> class.
+        /// </summary>
+        /// <param name="databaseConnector">the database connector.</param>
+        public TradeRepository(IDatabaseConnector databaseConnector)
+        {
+            this.dataBaseConnector = databaseConnector;
         }
 
         /// <inheritdoc/>
@@ -369,11 +378,12 @@ namespace Steampunks.Repository.Trade
                             // If destination user accepts, mark trade as completed since source user already accepted
                             command.Parameters.AddWithValue("@TradeStatus", trade.AcceptedByDestinationUser ? "Completed" : trade.TradeStatus);
                             command.Parameters.AddWithValue("@AcceptedByDestinationUser", trade.AcceptedByDestinationUser);
+
                             await command.ExecuteNonQueryAsync();
                         }
 
                         // If the destination user accepted, transfer the items
-                        if (trade.AcceptedByDestinationUser && trade.AcceptedBySourceUser)
+                        if (trade.AcceptedByDestinationUser)
                         {
                             // Get all items involved in the trade
                             var itemsToTransfer = new List<(int ItemId, bool IsSourceUserItem)>();

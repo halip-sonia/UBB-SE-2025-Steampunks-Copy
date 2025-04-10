@@ -123,7 +123,7 @@ namespace Steampunks.Services.TradeService
             return await this.tradeRepository.GetUserInventoryAsync(userId);
         }
 
-        private async void CompleteTrade(ItemTrade trade)
+        public async void CompleteTrade(ItemTrade trade)
         {
             try
             {
