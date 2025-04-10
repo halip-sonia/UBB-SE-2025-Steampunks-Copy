@@ -86,7 +86,6 @@ namespace Steampunks.Views
 
             this.ViewModel = new TradeViewModel(tradeService, userService, gameService);
 
-
             this.ActiveTrades = new ObservableCollection<ItemTrade>();
             this.TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
             this.itemsOfferedByCurrentUser = new ObservableCollection<Item>();
