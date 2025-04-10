@@ -22,7 +22,7 @@ namespace Steampunks.Repository.UserRepository
         /// <summary>
         /// The database connector instance used to establish and manage SQL connections.
         /// </summary>
-        private readonly DatabaseConnector databaseConnector;
+        private readonly IDatabaseConnector databaseConnector;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UserRepository"/> class.
@@ -30,6 +30,11 @@ namespace Steampunks.Repository.UserRepository
         public UserRepository()
         {
             this.databaseConnector = new DatabaseConnector();
+        }
+
+        public UserRepository(IDatabaseConnector database)
+        {
+            this.databaseConnector = database;
         }
 
         /// <summary>
@@ -60,8 +65,8 @@ namespace Steampunks.Repository.UserRepository
                         if (users.Count == 0)
                         {
                             this.databaseConnector.CloseConnection();
-                            this.databaseConnector.InsertTestUsers();
-                            return await Task.Run(() => this.databaseConnector.GetAllUsers());
+                            await this.InsertTestUsersAsync();
+                            return await Task.Run(() => this.GetAllUsersAsync());
                         }
                     }
                 }
@@ -85,7 +90,7 @@ namespace Steampunks.Repository.UserRepository
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             const string query = @"
-        SELECT UserId, Username, WalletBalance, Points, IsDeveloper
+        SELECT UserId, Username, WalletBalance, PointBalance, IsDeveloper
         FROM Users
         WHERE UserId = @UserId";
 
@@ -129,7 +134,7 @@ namespace Steampunks.Repository.UserRepository
         UPDATE Users
         SET Username = @Username,
             WalletBalance = @WalletBalance,
-            Points = @PointBalance,
+            PointBalance = @PointBalance,
             IsDeveloper = @IsDeveloper
         WHERE UserId = @UserId";
 
@@ -148,6 +153,43 @@ namespace Steampunks.Repository.UserRepository
 
                     int rowsAffected = await command.ExecuteNonQueryAsync();
                     return rowsAffected > 0;
+                }
+            }
+            finally
+            {
+                this.databaseConnector.CloseConnection();
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously inserts test users into the database.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public async Task InsertTestUsersAsync()
+        {
+            var testUsers = new List<string>
+            {
+                "TestUser1",
+                "TestUser2",
+                "TestUser3",
+            };
+
+            const string query = @"INSERT INTO Users (Username, WalletBalance, PointBalance, IsDeveloper) 
+                  VALUES (@Username, 1000, 100, 0)";
+
+            try
+            {
+                using (var connection = this.databaseConnector.GetConnection())
+                using (var command = new SqlCommand(query, connection))
+                {
+                    await connection.OpenAsync();
+
+                    foreach (var username in testUsers)
+                    {
+                        command.Parameters.Clear();
+                        command.Parameters.AddWithValue("@Username", username);
+                        await command.ExecuteNonQueryAsync();
+                    }
                 }
             }
             finally
