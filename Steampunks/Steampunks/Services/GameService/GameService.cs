@@ -24,7 +24,7 @@ namespace Steampunks.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="GameService"/> class.
         /// </summary>
-        /// <param name="databaseConnector">Database connector for accessing game data.</param>
+        /// <param name="gameRepository">The repository used for accessing game data.</param>
         public GameService(IGameRepository gameRepository)
         {
                 this.gameRepository = gameRepository;

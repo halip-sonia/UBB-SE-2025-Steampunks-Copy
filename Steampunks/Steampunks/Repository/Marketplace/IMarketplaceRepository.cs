@@ -76,5 +76,17 @@ namespace Steampunks.Repository.Marketplace
         /// </exception>
         /// <returns> A <see cref="Task"/> representing the asynchronous operation. </returns>
         Task UpdateItemPriceAsync(Game game, Item item);
+
+        /// <summary>
+        /// Gets the current user.
+        /// </summary>
+        /// <returns> The current User. </returns>
+        User? GetCurrentUser();
+
+        /// <summary>
+        /// Gets a list of all users.
+        /// </summary>
+        /// <returns> A list of users. </returns>
+        Task<List<User>> GetAllUsersAsync();
     }
 }
