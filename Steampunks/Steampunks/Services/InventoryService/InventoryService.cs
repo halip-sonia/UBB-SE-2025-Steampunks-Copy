@@ -31,13 +31,12 @@ namespace Steampunks.Services.InventoryService.InventoryService
         public InventoryService(IInventoryRepository inventoryRepository)
         {
             this.inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
+
             // Instantiate the validator with enriched logic.
             this.inventoryValidator = new InventoryValidator();
         }
 
-        /// <summary>
-        /// Retrieves a list of items from the user's inventory for the specified game.
-        /// </summary>
+        /// <inheritdoc/>
         public async Task<List<Item>> GetItemsFromInventoryAsync(Game game)
         {
             // Validate the game.
@@ -45,9 +44,7 @@ namespace Steampunks.Services.InventoryService.InventoryService
             return await this.inventoryRepository.GetItemsFromInventoryAsync(game);
         }
 
-        /// <summary>
-        /// Retrieves all items from the user's inventory.
-        /// </summary>
+        /// <inheritdoc/>
         public async Task<List<Item>> GetAllItemsFromInventoryAsync(User user)
         {
             // Validate the user.
@@ -55,9 +52,7 @@ namespace Steampunks.Services.InventoryService.InventoryService
             return await this.inventoryRepository.GetAllItemsFromInventoryAsync(user);
         }
 
-        /// <summary>
-        /// Adds an item to the inventory for the specified game and user.
-        /// </summary>
+        /// <inheritdoc/>
         public async Task AddItemToInventoryAsync(Game game, Item item, User user)
         {
             // Validate the inventory operation.
@@ -65,9 +60,7 @@ namespace Steampunks.Services.InventoryService.InventoryService
             await this.inventoryRepository.AddItemToInventoryAsync(game, item, user);
         }
 
-        /// <summary>
-        /// Removes an item from the inventory for the specified game and user.
-        /// </summary>
+        /// <inheritdoc/>
         public async Task RemoveItemFromInventoryAsync(Game game, Item item, User user)
         {
             // Validate the inventory operation.
@@ -75,30 +68,24 @@ namespace Steampunks.Services.InventoryService.InventoryService
             await this.inventoryRepository.RemoveItemFromInventoryAsync(game, item, user);
         }
 
-        /// <summary>
-        /// Gets the inventory of a given user by their user ID asynchronously.
-        /// </summary>
+        /// <inheritdoc/>
         public async Task<List<Item>> GetUserInventoryAsync(int userId)
         {
             if (userId <= 0)
             {
                 throw new ArgumentException("UserId must be positive.", nameof(userId));
             }
+
             return await this.inventoryRepository.GetUserInventoryAsync(userId);
         }
 
-        /// <summary>
-        /// Retrieves all users asynchronously.
-        /// </summary>
+        /// <inheritdoc/>
         public async Task<List<User>> GetAllUsersAsync()
         {
             return await this.inventoryRepository.GetAllUsersAsync();
         }
 
-        /// <summary>
-        /// Sells an item asynchronously.
-        /// </summary>
-        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        /// <inheritdoc/>
         public async Task<bool> SellItemAsync(Item item)
         {
             // Validate that the item is sellable.
@@ -106,15 +93,7 @@ namespace Steampunks.Services.InventoryService.InventoryService
             return await this.inventoryRepository.SellItemAsync(item);
         }
 
-        /// <summary>
-        /// Filters inventory items based on the selected game and search text.
-        /// </summary>
-        /// <param name="items">The list of inventory items to filter.</param>
-        /// <param name="selectedGame">
-        /// The game to filter by. Assumes the "All Games" option is identified by its title.
-        /// </param>
-        /// <param name="searchText">The text used to search item names and descriptions.</param>
-        /// <returns>A filtered list of items.</returns>
+        /// <inheritdoc/>
         public List<Item> FilterInventoryItems(List<Item> items, Game selectedGame, string searchText)
         {
             if (items == null)
@@ -145,12 +124,7 @@ namespace Steampunks.Services.InventoryService.InventoryService
             return filteredItems.ToList();
         }
 
-        /// <summary>
-        /// Retrieves a list of available games based on the provided inventory items.
-        /// Includes a special "All Games" option as the first entry.
-        /// </summary>
-        /// <param name="items">The list of inventory items.</param>
-        /// <returns>A list of games.</returns>
+        /// <inheritdoc/>
         public List<Game> GetAvailableGames(List<Item> items)
         {
             if (items == null)
@@ -174,13 +148,7 @@ namespace Steampunks.Services.InventoryService.InventoryService
             return availableGames;
         }
 
-        /// <summary>
-        /// Retrieves the filtered inventory for a given user based on selected game and search text.
-        /// </summary>
-        /// <param name="userId">The ID of the user.</param>
-        /// <param name="selectedGame">The game filter.</param>
-        /// <param name="searchText">The search text for item name/description.</param>
-        /// <returns>A task that represents the asynchronous operation containing the filtered list of items.</returns>
+        /// <inheritdoc/>
         public async Task<List<Item>> GetUserFilteredInventoryAsync(int userId, Game selectedGame, string searchText)
         {
             var allItems = await this.GetUserInventoryAsync(userId);
