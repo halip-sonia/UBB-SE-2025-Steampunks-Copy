@@ -112,9 +112,13 @@ namespace Steampunks.Domain.Entities
             this.PointBalance = balance;
         }
 
+        /// <summary>
+        /// Sets whether the user is a developer.
+        /// </summary>
+        /// <param name="state">True if the user is a developer; otherwise, false.</param>
         public void SetIsDeveloper(bool state)
         {
-            IsDeveloper = state;
+            this.IsDeveloper = state;
         }
     }
 }
