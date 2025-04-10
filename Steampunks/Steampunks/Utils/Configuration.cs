@@ -25,5 +25,7 @@ namespace Steampunks.Utils
         /// Connection string for Ilinca.
         /// </summary>
         public const string CONNECTIONSTRINGILINCA = "Server=localhost;Database=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
+
+        public const string CONNECTIONSTRINGBOGDAN = "Data Source=BOGDY;Initial Catalog=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
     }
 }

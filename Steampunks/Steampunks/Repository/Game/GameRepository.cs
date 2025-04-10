@@ -20,18 +20,58 @@ namespace Steampunks.Repository.GameRepo
     /// </summary>
     public class GameRepository : IGameRepository
     {
+        private const string GetAllGamesQuery = @"
+    SELECT 
+        GameId,
+        Title,
+        Price,
+        Genre,
+        Description,
+        Status
+    FROM Games
+    ORDER BY Title";
+
+        private const string GetGameByIdQuery = @"
+    SELECT 
+        GameId,
+        Title,
+        Price,
+        Genre,
+        Description,
+        Status
+    FROM Games
+    WHERE GameId = @GameId";
+
+        private const string UpdateGameQuery = @"
+    UPDATE Games
+    SET Title = @Title,
+        Price = @Price,
+        Genre = @Genre,
+        Description = @Description
+    WHERE GameId = @GameId";
+
+        private const string ColumnGameId = "GameId";
+        private const string ColumnTitle = "Title";
+        private const string ColumnPrice = "Price";
+        private const string ColumnGenre = "Genre";
+        private const string ColumnDescription = "Description";
+        private const string ColumnStatus = "Status";
+
         /// <summary>
         /// Responsible for executing database operations related to games.
         /// </summary>
-        private readonly DatabaseConnector databaseConnector;
+        private readonly IDatabaseConnector databaseConnector;
+
+        private SqlConnection? connection;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref=GameRepository"/> class
-        /// and sets up a connection to the database by creating a new <see cref="DatabaseConnector"/>.
+        /// Initializes a new instance of the <see cref="GameRepository"/> class
+        /// and sets up a connection to the database.
         /// </summary>
-        public GameRepository()
+        /// <param name="databaseConnector">The <see cref="DatabaseConnector"/> used to connect to the database.</param>
+        public GameRepository(IDatabaseConnector databaseConnector)
         {
-            this.databaseConnector = new DatabaseConnector();
+            this.databaseConnector = databaseConnector ?? throw new ArgumentNullException(nameof(databaseConnector));
         }
 
         /// <summary>
@@ -52,7 +92,7 @@ namespace Steampunks.Repository.GameRepo
         /// <returns>
         /// A Game object if a game with the specified <paramref name="gameId"/> exists; otherwise, null.
         /// </returns>
-        public async Task<Game> GetGameByIdAsync(int gameId) 
+        public async Task<Game?> GetGameByIdAsync(int gameId)
         {
             return await this.GetGameByIdFromDatabaseAsync(gameId);
         }
@@ -70,25 +110,15 @@ namespace Steampunks.Repository.GameRepo
         /// <summary>
         /// Asynchronously retrieves a list of all games from the database, ordered by title.
         /// </summary>
-        /// <returns>A task that represents the asynchronous operation. 
+        /// <returns>A task that represents the asynchronous operation.
         /// The task result contains a list of <see cref="Game"/> objects.</returns>
         public async Task<List<Game>> GetGamesFromDatabaseAsync()
         {
             var games = new List<Game>();
-            const string query = @"
-        SELECT 
-            GameId,
-            Title,
-            Price,
-            Genre,
-            Description,
-            Status
-        FROM Games
-        ORDER BY Title";
 
             try
             {
-                using (var command = new SqlCommand(query, this.databaseConnector.GetConnection()))
+                using (var command = new SqlCommand(GetAllGamesQuery, this.databaseConnector.GetConnection()))
                 {
                     await this.databaseConnector.OpenConnectionAsync();
                     using (var reader = await command.ExecuteReaderAsync())
@@ -96,13 +126,12 @@ namespace Steampunks.Repository.GameRepo
                         while (await reader.ReadAsync())
                         {
                             var game = new Game(
-                                reader.GetString(reader.GetOrdinal("Title")),
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("Status")));
+                                reader.GetString(reader.GetOrdinal(ColumnTitle)),
+                                (float)reader.GetDouble(reader.GetOrdinal(ColumnPrice)),
+                                reader.GetString(reader.GetOrdinal(ColumnGenre)),
+                                reader.GetString(reader.GetOrdinal(ColumnDescription)));
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal(ColumnGameId)));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal(ColumnStatus)));
                             games.Add(game);
                         }
                     }
@@ -121,40 +150,28 @@ namespace Steampunks.Repository.GameRepo
         /// </summary>
         /// <param name="gameId">The ID of the game to retrieve.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. 
+        /// A task that represents the asynchronous operation.
         /// The task result contains a <see cref="Game"/> object if found; otherwise, <c>null</c>.
         /// </returns>
-        public async Task<Game> GetGameByIdFromDatabaseAsync(int gameId)
+        public async Task<Game?> GetGameByIdFromDatabaseAsync(int gameId)
         {
-            const string query = @"
-        SELECT 
-            GameId,
-            Title,
-            Price,
-            Genre,
-            Description,
-            Status
-        FROM Games
-        WHERE GameId = @GameId";
-
             try
             {
-                using (var command = new SqlCommand(query, this.databaseConnector.GetConnection()))
+                using (var command = new SqlCommand(GetGameByIdQuery, this.databaseConnector.GetConnection()))
                 {
-                    command.Parameters.AddWithValue("@GameId", gameId);
+                    command.Parameters.AddWithValue(ColumnGameId, gameId);
                     await this.databaseConnector.OpenConnectionAsync();
                     using (var reader = await command.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
                             var game = new Game(
-                                reader.GetString(reader.GetOrdinal("Title")),
-                                (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
-                            game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
-                            game.SetStatus(reader.GetString(reader.GetOrdinal("Status")));
+                                reader.GetString(reader.GetOrdinal(ColumnTitle)),
+                                (float)reader.GetDouble(reader.GetOrdinal(ColumnPrice)),
+                                reader.GetString(reader.GetOrdinal(ColumnGenre)),
+                                reader.GetString(reader.GetOrdinal(ColumnDescription)));
+                            game.SetGameId(reader.GetInt32(reader.GetOrdinal(ColumnGameId)));
+                            game.SetStatus(reader.GetString(reader.GetOrdinal(ColumnStatus)));
                             return game;
                         }
                     }
@@ -173,28 +190,20 @@ namespace Steampunks.Repository.GameRepo
         /// </summary>
         /// <param name="game">The <see cref="Game"/> object containing updated information.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. 
+        /// A task that represents the asynchronous operation.
         /// The task result contains <c>true</c> if the update was successful; otherwise, <c>false</c>.
         /// </returns>
         public async Task<bool> UpdateGameFromDatabaseAsync(Game game)
         {
-            const string query = @"
-        UPDATE Games
-        SET Title = @Title,
-            Price = @Price,
-            Genre = @Genre,
-            Description = @Description
-        WHERE GameId = @GameId";
-
             try
             {
-                using (var command = new SqlCommand(query, this.databaseConnector.GetConnection()))
+                using (var command = new SqlCommand(UpdateGameQuery, this.databaseConnector.GetConnection()))
                 {
-                    command.Parameters.AddWithValue("@GameId", game.GameId);
-                    command.Parameters.AddWithValue("@Title", game.Title);
-                    command.Parameters.AddWithValue("@Price", game.Price);
-                    command.Parameters.AddWithValue("@Genre", game.Genre);
-                    command.Parameters.AddWithValue("@Description", game.Description);
+                    command.Parameters.AddWithValue(ColumnGameId, game.GameId);
+                    command.Parameters.AddWithValue(ColumnTitle, game.Title);
+                    command.Parameters.AddWithValue(ColumnPrice, game.Price);
+                    command.Parameters.AddWithValue(ColumnGenre, game.Genre);
+                    command.Parameters.AddWithValue(ColumnDescription, game.Description);
 
                     await this.databaseConnector.OpenConnectionAsync();
                     int rowsAffected = await command.ExecuteNonQueryAsync();
@@ -206,9 +215,5 @@ namespace Steampunks.Repository.GameRepo
                 this.databaseConnector.CloseConnection();
             }
         }
-
-
-
     }
-
 }

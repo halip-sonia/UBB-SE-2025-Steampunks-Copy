@@ -64,6 +64,7 @@ namespace Steampunks.Views
         private const int NoSelectionIndex = -1;
 
         private readonly DatabaseConnector databaseConnector;
+        
         private readonly ITradeService tradeService;
         private readonly IUserService userService;
         private readonly IGameService gameService;
@@ -84,7 +85,7 @@ namespace Steampunks.Views
             this.databaseConnector = new DatabaseConnector();
             this.tradeService = new TradeService(new TradeRepository());
             this.userService = new UserService(new UserRepository());
-            this.gameService = new GameService(new GameRepository());
+            this.gameService = new GameService(new GameRepository(databaseConnector));
             this.ViewModel = new TradeViewModel(this.tradeService, this.userService, this.gameService);
             this.ActiveTrades = new ObservableCollection<ItemTrade>();
             this.TradeHistory = new ObservableCollection<TradeHistoryViewModel>();
