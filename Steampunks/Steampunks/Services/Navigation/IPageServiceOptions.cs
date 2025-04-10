@@ -1,4 +1,8 @@
-﻿namespace Steampunks.Services
+﻿// <copyright file="IPageServiceOptions.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+namespace Steampunks.Services
 {
     using System;
     using System.Collections.Generic;
