@@ -126,9 +126,9 @@ namespace Steampunks.DataLink
                     }
                 }
             }
-            catch (Exception exception)
+            catch (Exception databaseConnectionTestException)
             {
-                System.Diagnostics.Debug.WriteLine($"Database connection test failed: {exception.Message}");
+                System.Diagnostics.Debug.WriteLine($"Database connection test failed: {databaseConnectionTestException.Message}");
                 return false;
             }
         }
@@ -191,10 +191,10 @@ namespace Steampunks.DataLink
 
                         transaction.Commit();
                     }
-                    catch (Exception exception)
+                    catch (Exception addGameWithItemsException)
                     {
                         transaction.Rollback();
-                        System.Diagnostics.Debug.WriteLine($"Error in AddGameWithItems: {exception.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Error in AddGameWithItems: {addGameWithItemsException.Message}");
                         throw;
                     }
                 }
@@ -364,10 +364,10 @@ namespace Steampunks.DataLink
                 System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
                 return path;
             }
-            catch (Exception exception)
+            catch (Exception getItemImagePathException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {exception.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {exception.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {getItemImagePathException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {getItemImagePathException.StackTrace}");
                 return "ms-appx:///Assets/img/games/default-item.png";
             }
         }
