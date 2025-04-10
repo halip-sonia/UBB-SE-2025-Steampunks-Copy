@@ -27,7 +27,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.CONNECTIONSTRINGILINCA;
+            this.connectionString = Configuration.CONNECTIONSTRINGNIKOLE;
         }
 
         /// <summary>

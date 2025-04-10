@@ -49,5 +49,10 @@ namespace Steampunks.Domain.Entities
         {
             PointBalance = balance;
         }
+
+        public void SetIsDeveloper(bool state)
+        {
+            IsDeveloper = state;
+        }
     }
 } 

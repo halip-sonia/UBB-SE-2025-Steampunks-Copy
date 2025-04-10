@@ -43,5 +43,11 @@ namespace Steampunks.Repository.UserRepository
         /// A task that represents the asynchronous operation. The task result indicates whether the update was successful.
         /// </returns>
         Task<bool> UpdateUserAsync(User user);
+
+        /// <summary>
+        /// Asynchronously inserts test users into the database.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        Task InsertTestUsersAsync();
     }
 }

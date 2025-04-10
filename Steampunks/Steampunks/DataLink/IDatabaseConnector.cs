@@ -15,6 +15,8 @@ namespace Steampunks.DataLink
         void CloseConnection();
         string GetItemImagePath(Item item);
         User GetCurrentUser();
+
+        public SqlConnection GetNewConnection();
     }
 
 }
