@@ -415,7 +415,7 @@ namespace Steampunks.ViewModels
 
             try
             {
-                trade.Decline();
+                trade.DeclineTradeRequest();
                 await this.tradeService.UpdateTradeAsync(trade);
 
                 // Clear the selected trade
