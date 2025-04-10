@@ -210,17 +210,17 @@ namespace Steampunks.ViewModels
 
                 // Retrieve all inventory items to rebuild the games filter.
                 var allItems = await this.inventoryService.GetUserInventoryAsync(this.SelectedUser.UserId);
-                var games = this.inventoryService.GetAvailableGames(allItems);
+                var availableGames = this.inventoryService.GetAvailableGames(allItems);
                 this.AvailableGames.Clear();
-                foreach (var game in games)
+                foreach (var game in availableGames)
                 {
                     this.AvailableGames.Add(game);
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingInventoryItemException)
             {
                 // Log exception details as needed.
-                System.Diagnostics.Debug.WriteLine($"Error loading inventory items: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading inventory items: {loadingInventoryItemException.Message}");
                 this.InventoryItems.Clear();
             }
             finally
@@ -245,7 +245,7 @@ namespace Steampunks.ViewModels
         /// <param name="propertyName">
         /// Name of the property that changed.
         /// </param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -275,9 +275,9 @@ namespace Steampunks.ViewModels
                     this.InventoryItems.Add(item);
                 }
             }
-            catch (Exception ex)
+            catch (Exception updatingInventoryItemsException)
             {
-                System.Diagnostics.Debug.WriteLine($"Error updating inventory items: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error updating inventory items: {updatingInventoryItemsException.Message}");
                 this.InventoryItems.Clear();
             }
             finally
@@ -293,9 +293,9 @@ namespace Steampunks.ViewModels
         {
             try
             {
-                var users = await this.inventoryService.GetAllUsersAsync();
+                var allUsers = await this.inventoryService.GetAllUsersAsync();
                 this.AvailableUsers.Clear();
-                foreach (var user in users)
+                foreach (var user in allUsers)
                 {
                     this.AvailableUsers.Add(user);
                 }
@@ -306,10 +306,10 @@ namespace Steampunks.ViewModels
                     this.SelectedUser = this.AvailableUsers.First();
                 }
             }
-            catch (Exception ex)
+            catch (Exception loadingUsersException)
             {
                 // Log exception details as needed.
-                System.Diagnostics.Debug.WriteLine($"Error loading users: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading users: {loadingUsersException.Message}");
                 this.AvailableUsers.Clear();
             }
         }
