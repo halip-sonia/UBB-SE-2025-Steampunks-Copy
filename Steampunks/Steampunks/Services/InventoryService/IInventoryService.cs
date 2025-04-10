@@ -52,8 +52,45 @@ namespace Steampunks.Services.InventoryService.InventoryService
         /// <returns>A <see cref="Task"/> asynchronously resolving to a list of <see cref="Item"/> objects associated with the specified user.</returns>
         Task<List<Item>> GetUserInventoryAsync(int userId);
 
+        /// <summary>
+        /// Retrieves all users from the repository asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task"/> asynchronously resolving to a list of <see cref="User"/> objects.</returns>
         Task<List<User>> GetAllUsersAsync();
 
+        /// <summary>
+        /// Sells an item asynchronously.
+        /// </summary>
+        /// <param name="item">The item who will be listed as for sale.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
         Task<bool> SellItemAsync(Item item);
+
+        /// <summary>
+        /// Filters inventory items based on the selected game and search text.
+        /// </summary>
+        /// <param name="items">The list of inventory items to filter.</param>
+        /// <param name="selectedGame">
+        /// The game to filter by. Assumes the "All Games" option is identified by its title.
+        /// </param>
+        /// <param name="searchText">The text used to search item names and descriptions.</param>
+        /// <returns>A filtered list of items.</returns>
+        List<Item> FilterInventoryItems(List<Item> items, Game selectedGame, string searchText);
+
+        /// <summary>
+        /// Retrieves a list of available games based on the provided inventory items.
+        /// Includes a special "All Games" option as the first entry.
+        /// </summary>
+        /// <param name="items">The list of inventory items.</param>
+        /// <returns>A list of games.</returns>
+        List<Game> GetAvailableGames(List<Item> items);
+
+        /// <summary>
+        /// Retrieves the filtered inventory for a given user based on selected game and search text.
+        /// </summary>
+        /// <param name="userId">The ID of the user.</param>
+        /// <param name="selectedGame">The game filter.</param>
+        /// <param name="searchText">The search text for item name/description.</param>
+        /// <returns>A task that represents the asynchronous operation containing the filtered list of items.</returns>
+        Task<List<Item>> GetUserFilteredInventoryAsync(int userId, Game selectedGame, string searchText);
     }
 }

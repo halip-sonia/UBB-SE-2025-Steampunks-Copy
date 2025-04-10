@@ -56,12 +56,6 @@ namespace Steampunks.Validators.InventoryValidators
             {
                 throw new ArgumentException("Item must have a valid positive ID.", nameof(item));
             }
-
-            // (Optional) You could also validate additional properties, e.g., if an item can only be sold once.
-            // if (item.IsSold)
-            // {
-            //     throw new InvalidOperationException("Item is already sold.");
-            // }
         }
 
         /// <inheritdoc/>
@@ -93,11 +87,7 @@ namespace Steampunks.Validators.InventoryValidators
             this.ValidateUser(user);
         }
 
-        /// <summary>
-        /// Validates whether an item is eligible to be sold.
-        /// </summary>
-        /// <param name="item">The item to validate.</param>
-        /// <exception cref="InvalidOperationException">Thrown if the item is already listed.</exception>
+        /// <inheritdoc/>
         public void ValidateSellableItem(Item item)
         {
             // First, validate the basic properties of the item.

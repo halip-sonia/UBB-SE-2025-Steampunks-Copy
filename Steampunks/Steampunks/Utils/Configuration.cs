@@ -25,9 +25,12 @@ namespace Steampunks.Utils
         /// Connection string for Ilinca.
         /// </summary>
         public const string CONNECTIONSTRINGILINCA = "Server=localhost\\SQLEXPRESS;Database=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
-        
+
+        /// <summary>
+        /// Connection string for Bogdan.
+        /// </summary>
         public const string CONNECTIONSTRINGBOGDAN = "Data Source=BOGDY;Initial Catalog=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
-       
+
         /// <summary>
         /// Connection string for Bianca.
         /// </summary>
