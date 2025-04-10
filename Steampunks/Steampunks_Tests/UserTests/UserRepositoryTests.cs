@@ -41,13 +41,13 @@ namespace Steampunks.Tests
         {
             // Get a fresh connection directly (not through the mock)
             var connector = new DatabaseConnector();
-            var connection = connector.GetNewConnection();
+            var connection = connector.GetConnection();
 
             try
             {
                 await connection.OpenAsync();
 
-                using var cmd = new SqlCommand("DELETE FROM Users", connection);
+                using var cmd = new SqlCommand("DELETE FROM Users WHERE Username = '!@#Special_User_测试_🚀'", connection);
                 await cmd.ExecuteNonQueryAsync();
             }
             finally
@@ -77,7 +77,7 @@ namespace Steampunks.Tests
         [Test]
         public async Task GetUserByIdAsync_SpecialCharactersHandled()
         {
-            ClearUsersTableAsync();
+            await ClearUsersTableAsync();
             var specialUser = new User("!@#Special_User_测试_🚀");
 
             var connection = mockDatabaseConnector.Object.GetConnection();

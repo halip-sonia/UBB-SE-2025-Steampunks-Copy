@@ -21,7 +21,7 @@ namespace Steampunks.Repository.InventoryTests
         public StubDatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.TESTCONNECTIONSTRINGDARIUS;
+            this.connectionString = Configuration.TESTCONNECTIONSTRINGSONIA;
         }
 
         /// <summary>
@@ -157,7 +157,7 @@ namespace Steampunks.Repository.InventoryTests
         {
             private IInventoryRepository repository;
             private IDatabaseConnector databaseConnector;
-            private const string TestConnectionString = Configuration.TESTCONNECTIONSTRINGDARIUS; // Points to test database
+            private const string TestConnectionString = Configuration.TESTCONNECTIONSTRINGSONIA; // Points to test database
 
             [OneTimeSetUp]
             public async Task OneTimeSetUp()
