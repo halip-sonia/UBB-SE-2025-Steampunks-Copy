@@ -128,32 +128,52 @@ namespace Steampunks.Repository.InventoryTests
 
         public string GetItemImagePath(Item item)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // Get the game folder name based on the game title
+                string gameFolder = item.Game.Title.ToLower() switch
+                {
+                    "counter-strike 2" => "cs2",
+                    "dota 2" => "dota2",
+                    "team fortress 2" => "tf2",
+                    _ => item.Game.Title.ToLower().Replace(" ", string.Empty).Replace(":", string.Empty)
+                };
+
+                // Return a path to the image based on the ItemId
+                var path = $"ms-appx:///Assets/img/games/{gameFolder}/{item.ItemId}.png";
+                System.Diagnostics.Debug.WriteLine($"Generated image path for item {item.ItemId} ({item.ItemName}) from {item.Game.Title}: {path}");
+                return path;
+            }
+            catch (Exception getItemImagePathException)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in GetItemImagePath: {getItemImagePathException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {getItemImagePathException.StackTrace}");
+                return "ms-appx:///Assets/img/games/default-item.png";
+            }
         }
     }
         [TestFixture]
-    public class InventoryRepositoryIntegrationTests
-    {
-        private InventoryRepository repository;
-        private IDatabaseConnector databaseConnector;
-        private const string TestConnectionString = Configuration.TESTCONNECTIONSTRINGDARIUS;
-
-        [OneTimeSetUp]
-        public async Task OneTimeSetUp()
+        public class InventoryRepositoryAdditionalIntegrationTests
         {
-            // Instantiate the connector and repository.
-            databaseConnector = new StubDatabaseConnector();
-            repository = new InventoryRepository(databaseConnector);
+            private IInventoryRepository repository;
+            private IDatabaseConnector databaseConnector;
+            private const string TestConnectionString = Configuration.TESTCONNECTIONSTRINGDARIUS; // Points to test database
 
-            // Create test tables and synonyms so that production queries resolve to these test tables.
-            using (var connection = new SqlConnection(TestConnectionString))
+            [OneTimeSetUp]
+            public async Task OneTimeSetUp()
             {
-                await connection.OpenAsync();
+                // Instantiate the connector and repository.
+                databaseConnector = new StubDatabaseConnector();
+                repository = new InventoryRepository(databaseConnector);
 
-                using (var command = connection.CreateCommand())
+                // Create test tables and synonyms so that production queries resolve to these test tables.
+                using (var connection = new SqlConnection(TestConnectionString))
                 {
-                    // Create test tables with minimal definitions (adjust these definitions as needed).
-                    command.CommandText = @"
+                    await connection.OpenAsync();
+
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
                         IF OBJECT_ID('dbo.TestUsers', 'U') IS NOT NULL DROP TABLE dbo.TestUsers;
                         CREATE TABLE dbo.TestUsers (
                             UserId INT PRIMARY KEY,
@@ -193,51 +213,170 @@ namespace Steampunks.Repository.InventoryTests
                             PRIMARY KEY (UserId, GameId, ItemId)
                         );
 
-                        -- Create synonyms so that production table names point to the test tables.
+                        -- Create synonyms to map production table names to test tables.
                         IF OBJECT_ID('dbo.Users', 'SN') IS NOT NULL DROP SYNONYM dbo.Users;
                         CREATE SYNONYM dbo.Users FOR dbo.TestUsers;
-                        
+
                         IF OBJECT_ID('dbo.Games', 'SN') IS NOT NULL DROP SYNONYM dbo.Games;
                         CREATE SYNONYM dbo.Games FOR dbo.TestGames;
-                        
+
                         IF OBJECT_ID('dbo.Items', 'SN') IS NOT NULL DROP SYNONYM dbo.Items;
                         CREATE SYNONYM dbo.Items FOR dbo.TestItems;
-                        
+
                         IF OBJECT_ID('dbo.UserInventory', 'SN') IS NOT NULL DROP SYNONYM dbo.UserInventory;
                         CREATE SYNONYM dbo.UserInventory FOR dbo.TestUserInventory;
                     ";
-                    await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
                 }
-                connection.Close();
             }
-        }
 
-        [SetUp]
-        public async Task SetUp()
+            [SetUp]
+            public async Task SetUp()
+            {
+                // Before each test, clear all test tables.
+                using (var connection = new SqlConnection(TestConnectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        DELETE FROM dbo.TestUserInventory;
+                        DELETE FROM dbo.TestItems;
+                        DELETE FROM dbo.TestGames;
+                        DELETE FROM dbo.TestUsers;
+                    ";
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
+                }
+            }
+        [Test]
+        public async Task SellItemAsync_ValidItem_CompletesSale()
         {
-            // Before each test, clear the test tables.
+            // Arrange: Create a Game and an Item.
+            var game = new Game("Sell Game", 15.99f, "Action", "Some Description");
+            game.SetGameId(300);
+            var item = new Item("Sellable Item", game, 9.99f, "To Sell");
+
+            int insertedItemId;
+            // Insert a dummy row into dbo.TestItems with IsListed = 0 (unsold).
             using (var connection = new SqlConnection(TestConnectionString))
             {
                 await connection.OpenAsync();
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = @"
-                        DELETE FROM dbo.TestUserInventory;
-                        DELETE FROM dbo.TestItems;
-                        DELETE FROM dbo.TestGames;
-                        DELETE FROM dbo.TestUsers;
+                        INSERT INTO dbo.TestItems (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                        OUTPUT INSERTED.ItemId
+                        VALUES (@gameId, @itemName, @price, @description, @isListed);
                     ";
-                    await command.ExecuteNonQueryAsync();
+                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@itemName", "Sellable Item"));
+                    command.Parameters.Add(new SqlParameter("@price", 9.99));
+                    command.Parameters.Add(new SqlParameter("@description", "To Sell"));
+                    command.Parameters.Add(new SqlParameter("@isListed", false));
+                    insertedItemId = (int)await command.ExecuteScalarAsync();
+                }
+                connection.Close();
+            }
+            item.SetItemId(insertedItemId);
+
+            // Act: Call SellItemAsync to mark the item as sold.
+            bool result = await repository.SellItemAsync(item);
+
+            // Assert: Verify that SellItemAsync returns true.
+            Assert.IsTrue(result, "SellItemAsync should return true upon successful sale.");
+
+            // Assert: Check that the item is marked as sold (IsListed = 1).
+            using (var connection = new SqlConnection(TestConnectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT IsListed FROM dbo.TestItems WHERE ItemId = @itemId;";
+                    command.Parameters.Add(new SqlParameter("@itemId", insertedItemId));
+
+                    bool isListed = (bool)await command.ExecuteScalarAsync();
+                    Assert.IsTrue(isListed, "Item should have been marked as sold (IsListed = 1).");
                 }
                 connection.Close();
             }
         }
-
         [Test]
         public void GetItemsFromInventoryAsync_NullGame_ThrowsArgumentNullException()
         {
             Assert.ThrowsAsync<ArgumentNullException>(async () =>
                 await repository.GetItemsFromInventoryAsync(null));
+        }
+
+        [Test]
+        public async Task AddItemToInventoryAsync_ValidParameters_InsertsItem()
+        {
+            // Arrange: Create a Game, a User, and an Item.
+            var game = new Game("Test Game", 9.99f, "RPG", "Game Description");
+            game.SetGameId(101);
+            var user = new User("newUser");
+            user.SetUserId(200);
+            var item = new Item("New Item", game, 5.99f, "Item Desc");
+
+            // Insert the dummy Game into dbo.TestGames (without SET IDENTITY_INSERT as GameId is not identity).
+            using (var connection = new SqlConnection(TestConnectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        INSERT INTO dbo.TestGames (GameId, Title, Price, Genre, Description, Status, RecommendedSpecs, MinimumSpecs)
+                        VALUES (@GameId, @Title, @Price, @Genre, @Description, @Status, NULL, NULL);
+                    ";
+                    command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@Title", game.Title));
+                    command.Parameters.Add(new SqlParameter("@Price", game.Price));
+                    command.Parameters.Add(new SqlParameter("@Genre", game.Genre));
+                    command.Parameters.Add(new SqlParameter("@Description", game.Description));
+                    command.Parameters.Add(new SqlParameter("@Status", "Active"));
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                // Insert the dummy User into dbo.TestUsers.
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        INSERT INTO dbo.TestUsers (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
+                        VALUES (@UserId, @Username, 0, 0, 0);
+                    ";
+                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                    command.Parameters.Add(new SqlParameter("@Username", user.Username));
+                    await command.ExecuteNonQueryAsync();
+                }
+                connection.Close();
+            }
+
+            // Act: Call the repository method to add the item.
+            await repository.AddItemToInventoryAsync(game, item, user);
+
+            // Assert: Verify that a linking row exists in dbo.TestUserInventory.
+            using (var connection = new SqlConnection(TestConnectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        SELECT COUNT(*) 
+                        FROM dbo.TestUserInventory 
+                        WHERE UserId = @UserId AND GameId = @GameId AND ItemId = @ItemId;
+                    ";
+                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                    command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                    command.Parameters.Add(new SqlParameter("@ItemId", item.ItemId));
+
+                    int count = (int)await command.ExecuteScalarAsync();
+                    Assert.AreEqual(1, count, "Item should have been inserted into the TestUserInventory table.");
+                }
+                connection.Close();
+            }
         }
 
         [Test]
@@ -320,157 +459,329 @@ namespace Steampunks.Repository.InventoryTests
             Assert.IsFalse(item.IsListed, "IsListed should be false as per inserted data");
         }
 
+        #region GetUserInventoryAsync Tests
 
         [Test]
-        public async Task AddItemToInventoryAsync_ValidParameters_InsertsItem()
-        {
-            // Arrange: Create a Game, a User, and an Item.
-            var game = new Game("Test Game", 9.99f, "RPG", "Game Description");
-            game.SetGameId(101);
-            var user = new User("newUser");
-            user.SetUserId(200);
-            var item = new Item("New Item", game, 5.99f, "Item Desc");
-
-            // Insert the dummy Game into dbo.TestGames (without SET IDENTITY_INSERT as GameId is not identity).
-            using (var connection = new SqlConnection(TestConnectionString))
+            public async Task GetUserInventoryAsync_ValidUser_ReturnsCorrectItemCount()
             {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
+                // Arrange: Insert a dummy game, item, and linking row.
+                var user = new User("testuser");
+                user.SetUserId(1);
+
+                // Insert a game into TestGames.
+                var game = new Game("Test Game", 9.99f, "Adventure", "Game Desc");
+                game.SetGameId(10);
+                using (var connection = new SqlConnection(TestConnectionString))
                 {
-                    command.CommandText = @"
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
                         INSERT INTO dbo.TestGames (GameId, Title, Price, Genre, Description, Status, RecommendedSpecs, MinimumSpecs)
                         VALUES (@GameId, @Title, @Price, @Genre, @Description, @Status, NULL, NULL);
                     ";
-                    command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
-                    command.Parameters.Add(new SqlParameter("@Title", game.Title));
-                    command.Parameters.Add(new SqlParameter("@Price", game.Price));
-                    command.Parameters.Add(new SqlParameter("@Genre", game.Genre));
-                    command.Parameters.Add(new SqlParameter("@Description", game.Description));
-                    command.Parameters.Add(new SqlParameter("@Status", "Active"));
-                    await command.ExecuteNonQueryAsync();
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@Title", game.Title));
+                        command.Parameters.Add(new SqlParameter("@Price", game.Price));
+                        command.Parameters.Add(new SqlParameter("@Genre", game.Genre));
+                        command.Parameters.Add(new SqlParameter("@Description", game.Description));
+                        command.Parameters.Add(new SqlParameter("@Status", "Active"));
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
                 }
 
-                // Insert the dummy User into dbo.TestUsers.
-                using (var command = connection.CreateCommand())
+                // Insert an item into TestItems.
+                int insertedItemId;
+                using (var connection = new SqlConnection(TestConnectionString))
                 {
-                    command.CommandText = @"
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestItems (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                        OUTPUT INSERTED.ItemId
+                        VALUES (@GameId, @ItemName, @Price, @Description, @IsListed);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemName", "InventoryItem"));
+                        command.Parameters.Add(new SqlParameter("@Price", 20.0));
+                        command.Parameters.Add(new SqlParameter("@Description", "Item Desc"));
+                        command.Parameters.Add(new SqlParameter("@IsListed", false));
+                        insertedItemId = (int)await command.ExecuteScalarAsync();
+                    }
+                    connection.Close();
+                }
+
+                // Insert linking row into TestUserInventory.
+                using (var connection = new SqlConnection(TestConnectionString))
+                {
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestUserInventory (UserId, GameId, ItemId)
+                        VALUES (@UserId, @GameId, @ItemId);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemId", insertedItemId));
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
+                }
+
+                // Act: Call GetUserInventoryAsync.
+                var items = await repository.GetUserInventoryAsync(user.UserId);
+
+                // Assert: Check that exactly one item is returned.
+                Assert.AreEqual(1, items.Count, "There should be one item in the user inventory.");
+            }
+
+            #endregion
+
+            #region GetAllItemsFromInventoryAsync Tests
+
+            [Test]
+            public async Task GetAllItemsFromInventoryAsync_ValidUser_ReturnsCorrectItemCount()
+            {
+                // Arrange: Insert a dummy user.
+                var user = new User("allItemsUser");
+                user.SetUserId(2);
+
+                // Insert a game and an item linked to this user.
+                var game = new Game("AllItems Game", 19.99f, "RPG", "Game Desc");
+                game.SetGameId(20);
+                using (var connection = new SqlConnection(TestConnectionString))
+                {
+                    await connection.OpenAsync();
+
+                    // Insert game.
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestGames (GameId, Title, Price, Genre, Description, Status, RecommendedSpecs, MinimumSpecs)
+                        VALUES (@GameId, @Title, @Price, @Genre, @Description, @Status, NULL, NULL);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@Title", game.Title));
+                        command.Parameters.Add(new SqlParameter("@Price", game.Price));
+                        command.Parameters.Add(new SqlParameter("@Genre", game.Genre));
+                        command.Parameters.Add(new SqlParameter("@Description", game.Description));
+                        command.Parameters.Add(new SqlParameter("@Status", "Active"));
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    // Insert an item into TestItems.
+                    int insertedItemId;
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestItems (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                        OUTPUT INSERTED.ItemId
+                        VALUES (@GameId, @ItemName, @Price, @Description, @IsListed);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemName", "AllItemsItem"));
+                        command.Parameters.Add(new SqlParameter("@Price", 25.5));
+                        command.Parameters.Add(new SqlParameter("@Description", "Item Desc"));
+                        command.Parameters.Add(new SqlParameter("@IsListed", false));
+                        insertedItemId = (int)await command.ExecuteScalarAsync();
+                    }
+
+                    // Insert linking row into TestUserInventory.
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestUserInventory (UserId, GameId, ItemId)
+                        VALUES (@UserId, @GameId, @ItemId);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemId", insertedItemId));
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    connection.Close();
+                }
+
+                // Act: Call GetAllItemsFromInventoryAsync.
+                var items = await repository.GetAllItemsFromInventoryAsync(user);
+
+                // Assert: Check that exactly one item is returned.
+                Assert.AreEqual(1, items.Count, "There should be one item returned for the user.");
+            }
+
+            #endregion
+
+            #region RemoveItemFromInventoryAsync Tests
+
+            [Test]
+            public async Task RemoveItemFromInventoryAsync_ValidData_RemovesLinkingRow()
+            {
+                // Arrange: Insert a dummy user, game, and item.
+                var user = new User("removeUser");
+                user.SetUserId(3);
+                var game = new Game("Remove Game", 9.99f, "Action", "Game Desc");
+                game.SetGameId(30);
+                var item = new Item("RemoveItem", game, 10.0f, "Item Desc");
+                int insertedItemId;
+
+                using (var connection = new SqlConnection(TestConnectionString))
+                {
+                    await connection.OpenAsync();
+
+                    // Insert game.
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestGames (GameId, Title, Price, Genre, Description, Status, RecommendedSpecs, MinimumSpecs)
+                        VALUES (@GameId, @Title, @Price, @Genre, @Description, @Status, NULL, NULL);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@Title", game.Title));
+                        command.Parameters.Add(new SqlParameter("@Price", game.Price));
+                        command.Parameters.Add(new SqlParameter("@Genre", game.Genre));
+                        command.Parameters.Add(new SqlParameter("@Description", game.Description));
+                        command.Parameters.Add(new SqlParameter("@Status", "Active"));
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    // Insert item.
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestItems (CorrespondingGameId, ItemName, Price, Description, IsListed)
+                        OUTPUT INSERTED.ItemId
+                        VALUES (@GameId, @ItemName, @Price, @Description, @IsListed);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemName", "RemoveItem"));
+                        command.Parameters.Add(new SqlParameter("@Price", 10.0));
+                        command.Parameters.Add(new SqlParameter("@Description", "Item Desc"));
+                        command.Parameters.Add(new SqlParameter("@IsListed", false));
+                        insertedItemId = (int)await command.ExecuteScalarAsync();
+                    }
+                    item.SetItemId(insertedItemId);
+
+                    // Insert user.
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
                         INSERT INTO dbo.TestUsers (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
                         VALUES (@UserId, @Username, 0, 0, 0);
                     ";
-                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
-                    command.Parameters.Add(new SqlParameter("@Username", user.Username));
-                    await command.ExecuteNonQueryAsync();
+                        command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                        command.Parameters.Add(new SqlParameter("@Username", user.Username));
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    // Insert linking row into TestUserInventory.
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestUserInventory (UserId, GameId, ItemId)
+                        VALUES (@UserId, @GameId, @ItemId);
+                    ";
+                        command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemId", insertedItemId));
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
                 }
-                connection.Close();
-            }
 
-            // Act: Call the repository method to add the item.
-            await repository.AddItemToInventoryAsync(game, item, user);
+                // Act: Call RemoveItemFromInventoryAsync.
+                await repository.RemoveItemFromInventoryAsync(game, item, user);
 
-            // Assert: Verify that a linking row exists in dbo.TestUserInventory.
-            using (var connection = new SqlConnection(TestConnectionString))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
+                // Assert: Query TestUserInventory and verify that no row exists for the given link.
+                using (var connection = new SqlConnection(TestConnectionString))
                 {
-                    command.CommandText = @"
-                        SELECT COUNT(*) 
-                        FROM dbo.TestUserInventory 
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        SELECT COUNT(*) FROM dbo.TestUserInventory
                         WHERE UserId = @UserId AND GameId = @GameId AND ItemId = @ItemId;
                     ";
-                    command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
-                    command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
-                    command.Parameters.Add(new SqlParameter("@ItemId", item.ItemId));
+                        command.Parameters.Add(new SqlParameter("@UserId", user.UserId));
+                        command.Parameters.Add(new SqlParameter("@GameId", game.GameId));
+                        command.Parameters.Add(new SqlParameter("@ItemId", item.ItemId));
 
-                    int count = (int)await command.ExecuteScalarAsync();
-                    Assert.AreEqual(1, count, "Item should have been inserted into the TestUserInventory table.");
+                        int count = (int)await command.ExecuteScalarAsync();
+                        Assert.AreEqual(0, count, "The linking row should have been deleted.");
+                    }
+                    connection.Close();
                 }
-                connection.Close();
             }
-        }
 
-        [Test]
-        public async Task SellItemAsync_ValidItem_CompletesSale()
-        {
-            // Arrange: Create a Game and an Item.
-            var game = new Game("Sell Game", 15.99f, "Action", "Some Description");
-            game.SetGameId(300);
-            var item = new Item("Sellable Item", game, 9.99f, "To Sell");
+            #endregion
 
-            int insertedItemId;
-            // Insert a dummy row into dbo.TestItems with IsListed = 0 (unsold).
-            using (var connection = new SqlConnection(TestConnectionString))
+            #region GetAllUsersAsync Tests
+
+            [Test]
+            public async Task GetAllUsersAsync_ReturnsCorrectUserCount()
             {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
+                // Arrange: Insert two dummy users into TestUsers.
+                using (var connection = new SqlConnection(TestConnectionString))
                 {
-                    command.CommandText = @"
-                        INSERT INTO dbo.TestItems (CorrespondingGameId, ItemName, Price, Description, IsListed)
-                        OUTPUT INSERTED.ItemId
-                        VALUES (@gameId, @itemName, @price, @description, @isListed);
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                        INSERT INTO dbo.TestUsers (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
+                        VALUES (@UserId1, @Username1, 0, 0, 0);
+                        INSERT INTO dbo.TestUsers (UserId, Username, WalletBalance, PointBalance, IsDeveloper)
+                        VALUES (@UserId2, @Username2, 0, 0, 0);
                     ";
-                    command.Parameters.Add(new SqlParameter("@gameId", game.GameId));
-                    command.Parameters.Add(new SqlParameter("@itemName", "Sellable Item"));
-                    command.Parameters.Add(new SqlParameter("@price", 9.99));
-                    command.Parameters.Add(new SqlParameter("@description", "To Sell"));
-                    command.Parameters.Add(new SqlParameter("@isListed", false));
-                    insertedItemId = (int)await command.ExecuteScalarAsync();
+                        command.Parameters.Add(new SqlParameter("@UserId1", 101));
+                        command.Parameters.Add(new SqlParameter("@Username1", "UserOne"));
+                        command.Parameters.Add(new SqlParameter("@UserId2", 102));
+                        command.Parameters.Add(new SqlParameter("@Username2", "UserTwo"));
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
                 }
-                connection.Close();
+
+                // Act: Call GetAllUsersAsync.
+                var users = await repository.GetAllUsersAsync();
+
+                // Assert: Verify that two users are returned.
+                Assert.AreEqual(2, users.Count, "There should be two users returned.");
             }
-            item.SetItemId(insertedItemId);
 
-            // Act: Call SellItemAsync to mark the item as sold.
-            bool result = await repository.SellItemAsync(item);
+            #endregion
 
-            // Assert: Verify that SellItemAsync returns true.
-            Assert.IsTrue(result, "SellItemAsync should return true upon successful sale.");
-
-            // Assert: Check that the item is marked as sold (IsListed = 1).
-            using (var connection = new SqlConnection(TestConnectionString))
+            [OneTimeTearDown]
+            public async Task OneTimeTearDown()
             {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
+                // Clean up: Drop synonyms and test tables.
+                using (var connection = new SqlConnection(TestConnectionString))
                 {
-                    command.CommandText = "SELECT IsListed FROM dbo.TestItems WHERE ItemId = @itemId;";
-                    command.Parameters.Add(new SqlParameter("@itemId", insertedItemId));
-
-                    bool isListed = (bool)await command.ExecuteScalarAsync();
-                    Assert.IsTrue(isListed, "Item should have been marked as sold (IsListed = 1).");
-                }
-                connection.Close();
-            }
-        }
-
-        [OneTimeTearDown]
-        public async Task OneTimeTearDown()
-        {
-            // Clean up: Drop synonyms and test tables.
-            using (var connection = new SqlConnection(TestConnectionString))
-            {
-                await connection.OpenAsync();
-                using (var command = connection.CreateCommand())
-                {
-                    // Drop synonyms.
-                    command.CommandText = @"
+                    await connection.OpenAsync();
+                    using (var command = connection.CreateCommand())
+                    {
+                        // Drop synonyms.
+                        command.CommandText = @"
                         IF OBJECT_ID('dbo.Users', 'SN') IS NOT NULL DROP SYNONYM dbo.Users;
                         IF OBJECT_ID('dbo.Games', 'SN') IS NOT NULL DROP SYNONYM dbo.Games;
                         IF OBJECT_ID('dbo.Items', 'SN') IS NOT NULL DROP SYNONYM dbo.Items;
                         IF OBJECT_ID('dbo.UserInventory', 'SN') IS NOT NULL DROP SYNONYM dbo.UserInventory;
                     ";
-                    await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync();
 
-                    // Drop test tables.
-                    command.CommandText = @"
+                        // Drop test tables.
+                        command.CommandText = @"
                         IF OBJECT_ID('dbo.TestUserInventory', 'U') IS NOT NULL DROP TABLE dbo.TestUserInventory;
                         IF OBJECT_ID('dbo.TestItems', 'U') IS NOT NULL DROP TABLE dbo.TestItems;
                         IF OBJECT_ID('dbo.TestGames', 'U') IS NOT NULL DROP TABLE dbo.TestGames;
                         IF OBJECT_ID('dbo.TestUsers', 'U') IS NOT NULL DROP TABLE dbo.TestUsers;
                     ";
-                    await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    connection.Close();
                 }
-                connection.Close();
             }
         }
-    }
 }
+
