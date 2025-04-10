@@ -55,8 +55,18 @@ namespace Steampunks.Repository.Inventory
         /// <returns>RemoveInventoryItemAsync returns <see cref="Task"/> representing the asynchronous operation.</returns>
         Task RemoveItemFromInventoryAsync(Game game, Item item, User user);
 
+        /// <summary>
+        /// Gets a list of Users from the Database.
+        /// </summary>
+        /// <returns>A list of <see cref="Item"/> objects belonging to the specified user.</returns>
         Task<List<User>> GetAllUsersAsync();
 
+        /// <summary>
+        /// Asynchronously sells the specified item by updating its listed status.
+        /// </summary>
+        /// <param name="item">The item to be sold.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a value indicating whether the operation succeeded.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="item"/> is null.</exception>
         Task<bool> SellItemAsync(Item item);
     }
 }

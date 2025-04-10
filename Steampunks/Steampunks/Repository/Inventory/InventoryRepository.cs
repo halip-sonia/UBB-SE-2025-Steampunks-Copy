@@ -401,6 +401,7 @@ namespace Steampunks.Repository.Inventory
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<User>> GetAllUsersAsync()
         {
             var users = new List<User>();

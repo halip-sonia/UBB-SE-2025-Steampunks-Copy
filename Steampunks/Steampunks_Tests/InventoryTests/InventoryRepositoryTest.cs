@@ -10,18 +10,139 @@ using Steampunks.Utils;
 
 namespace Steampunks.Repository.InventoryTests
 {
-    [TestFixture]
+    public class StubDatabaseConnector : IDatabaseConnector
+    {
+        private readonly string connectionString;
+        private SqlConnection? connection;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DatabaseConnector"/> class using the connection string defined in the configuration.
+        /// </summary>
+        public StubDatabaseConnector()
+        {
+            // Local MSSQL connection string
+            this.connectionString = Configuration.TESTCONNECTIONSTRINGDARIUS;
+        }
+
+        /// <summary>
+        /// Gets the current SQL connection if open or creates and returns a new one if it's null or closed.
+        /// </summary>
+        /// <returns>The current or newly initialized <see cref="SqlConnection"/>.</returns>
+        public SqlConnection GetConnection()
+        {
+            if (this.connection == null || this.connection.State == ConnectionState.Closed)
+            {
+                this.connection = new SqlConnection(this.connectionString);
+            }
+
+            return this.connection;
+        }
+
+        /// <summary>
+        /// Always returns a new instance of <see cref="SqlConnection"/>.
+        /// </summary>
+        /// <returns>A new <see cref="SqlConnection"/> object.</returns>
+        public SqlConnection GetNewConnection()
+        {
+            return new SqlConnection(this.connectionString);
+        }
+
+        /// <summary>
+        /// Opens the connection if it is not already open.
+        /// </summary>
+        public void OpenConnection()
+        {
+            if (this.connection?.State != ConnectionState.Open)
+            {
+                this.connection?.Open();
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously opens the connection if it is not already open.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task OpenConnectionAsync()
+        {
+            if (this.connection == null)
+            {
+                this.connection = new SqlConnection(this.connectionString);
+            }
+
+            if (this.connection.State != ConnectionState.Open)
+            {
+                await this.connection.OpenAsync();
+            }
+        }
+
+        /// <summary>
+        /// Closes the connection if it is not already closed.
+        /// </summary>
+        public void CloseConnection()
+        {
+            if (this.connection?.State != ConnectionState.Closed)
+            {
+                this.connection?.Close();
+            }
+
+            this.connection = null;
+        }
+
+        /// <summary>
+        /// Asynchronously closes the connection if it is not already closed.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task CloseConnectionAsync()
+        {
+            if (this.connection?.State != ConnectionState.Closed)
+            {
+                await Task.Run(() => this.connection?.Close());
+            }
+        }
+
+        public User? GetCurrentUser()
+        {
+            using (var command = new SqlCommand("SELECT TOP 1 UserId, Username FROM Users", this.GetConnection()))
+            {
+                try
+                {
+                    this.OpenConnection();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var user = new User(reader.GetString(reader.GetOrdinal("Username")));
+                            user.SetUserId(reader.GetInt32(reader.GetOrdinal("UserId")));
+                            return user;
+                        }
+
+                        return null;
+                    }
+                }
+                finally
+                {
+                    this.CloseConnection();
+                }
+            }
+        }
+
+        public string GetItemImagePath(Item item)
+        {
+            throw new NotImplementedException();
+        }
+    }
+        [TestFixture]
     public class InventoryRepositoryIntegrationTests
     {
         private InventoryRepository repository;
         private IDatabaseConnector databaseConnector;
-        private const string TestConnectionString = Configuration.TESTCONNECTIONSTRINGDARIUS; // Ensure this points to your test DB
+        private const string TestConnectionString = Configuration.TESTCONNECTIONSTRINGDARIUS;
 
         [OneTimeSetUp]
         public async Task OneTimeSetUp()
         {
             // Instantiate the connector and repository.
-            databaseConnector = new DatabaseConnector();
+            databaseConnector = new StubDatabaseConnector();
             repository = new InventoryRepository(databaseConnector);
 
             // Create test tables and synonyms so that production queries resolve to these test tables.
