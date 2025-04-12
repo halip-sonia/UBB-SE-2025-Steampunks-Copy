@@ -21,9 +21,11 @@ namespace Steampunks.Repository.Inventory
         private SqlConnection? connection;
 
         private IDatabaseConnector? dataBaseConnector;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="InventoryRepository"/> class.
         /// </summary>
+        /// <param name="databaseConnector"> Database connector. </param>
         public InventoryRepository(IDatabaseConnector databaseConnector)
         {
             this.dataBaseConnector = databaseConnector;
@@ -75,8 +77,7 @@ namespace Steampunks.Repository.Inventory
                                 reader.GetString(reader.GetOrdinal("ItemName")),
                                 game,
                                 (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
+                                reader.GetString(reader.GetOrdinal("Description")));
                             item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
                             item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
                             items.Add(item);
@@ -237,8 +238,7 @@ namespace Steampunks.Repository.Inventory
                                 reader.GetString(reader.GetOrdinal("GameTitle")),
                                 (float)reader.GetDouble(reader.GetOrdinal("GamePrice")),
                                 reader.GetString(reader.GetOrdinal("Genre")),
-                                reader.GetString(reader.GetOrdinal("GameDescription"))
-                            );
+                                reader.GetString(reader.GetOrdinal("GameDescription")));
                             game.SetGameId(reader.GetInt32(reader.GetOrdinal("GameId")));
                             game.SetStatus(reader.GetString(reader.GetOrdinal("GameStatus")));
 
@@ -246,8 +246,7 @@ namespace Steampunks.Repository.Inventory
                                 reader.GetString(reader.GetOrdinal("ItemName")),
                                 game,
                                 (float)reader.GetDouble(reader.GetOrdinal("Price")),
-                                reader.GetString(reader.GetOrdinal("Description"))
-                            );
+                                reader.GetString(reader.GetOrdinal("Description")));
                             item.SetItemId(reader.GetInt32(reader.GetOrdinal("ItemId")));
                             item.SetIsListed(reader.GetBoolean(reader.GetOrdinal("IsListed")));
                             items.Add(item);

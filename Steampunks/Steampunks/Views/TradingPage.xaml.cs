@@ -132,7 +132,6 @@ namespace Steampunks.Views
                 {
                     this.UserComboBox.SelectedItem = allUsers.FirstOrDefault(user => user.UserId == loggedInUser.UserId);
                 }
-
             }
             catch (Exception exception)
             {

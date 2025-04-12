@@ -27,7 +27,7 @@ namespace Steampunks.DataLink
         public DatabaseConnector()
         {
             // Local MSSQL connection string
-            this.connectionString = Configuration.TESTCONNECTIONSTRINGDARIUS;
+            this.connectionString = Configuration.CONNECTIONSTRINGSONIA;
         }
 
         /// <summary>
@@ -222,6 +222,10 @@ namespace Steampunks.DataLink
             }
         }
 
+        /// <summary>
+        /// Gets all users.
+        /// </summary>
+        /// <returns> A list of users. </returns>
         public List<User> GetAllUsers()
         {
             var users = new List<User>();
@@ -257,6 +261,10 @@ namespace Steampunks.DataLink
             return users;
         }
 
+        /// <summary>
+        /// Gets all users asynchronously.
+        /// </summary>
+        /// <returns> A list of all users. </returns>
         public async Task<List<User>> GetAllUsersAsync()
         {
             var users = new List<User>();
@@ -292,6 +300,10 @@ namespace Steampunks.DataLink
             return users;
         }
 
+        /// <summary>
+        /// Gets the current user.
+        /// </summary>
+        /// <returns> Current user. </returns>
         public User? GetCurrentUser()
         {
             using (var command = new SqlCommand("SELECT TOP 1 UserId, Username FROM Users", this.GetConnection()))
@@ -318,6 +330,9 @@ namespace Steampunks.DataLink
             }
         }
 
+        /// <summary>
+        /// Inserts test users.
+        /// </summary>
         public void InsertTestUsers()
         {
             var testUsers = new List<string>
@@ -346,6 +361,11 @@ namespace Steampunks.DataLink
             }
         }
 
+        /// <summary>
+        /// Gets the image path for an item.
+        /// </summary>
+        /// <param name="item"> Item for which the image path is returned. </param>
+        /// <returns> A string representing the image path. </returns>
         public string GetItemImagePath(Item item)
         {
             try

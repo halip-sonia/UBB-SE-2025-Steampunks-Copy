@@ -27,6 +27,11 @@ namespace Steampunks.Utils
         public const string CONNECTIONSTRINGSONIA = "Data Source=DESKTOP-J4L4KLR\\SQLEXPRESS;Initial Catalog=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
 
         /// <summary>
+        /// Test connection for Sonia.
+        /// </summary>
+        public const string TESTCONNECTIONSTRINGSONIA = "Data Source=DESKTOP-J4L4KLR\\SQLEXPRESS;Initial Catalog=SteampunkDBTest;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";
+
+        /// <summary>
         /// Connection string for Ilinca.
         /// </summary>
         public const string CONNECTIONSTRINGILINCA = "Server=localhost\\SQLEXPRESS;Database=SteampunksDB;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False";

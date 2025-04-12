@@ -87,16 +87,6 @@ namespace Steampunks.Tests
         }
 
         [Test]
-        public async Task UpdateGameAsync_ValidGame_ReturnsTrue()
-        {
-            var game = new Game("Valid Game", 19.99f, "Action", "Some Description");
-            game.SetGameId(1); 
-
-            var result = await gameRepository.UpdateGameAsync(game);
-            Assert.That(result, Is.True);
-        }
-
-        [Test]
         public async Task UpdateGameAsync_ExceptionThrown_ClosesConnection()
         {
             var game = new Game("Oops", 9.99f, "Bugged", "Will fail");

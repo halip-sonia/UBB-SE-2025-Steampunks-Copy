@@ -8,10 +8,17 @@ namespace Steampunks.DataLink
     using System.IO;
     using Microsoft.Data.SqlClient;
 
+    /// <summary>
+    /// Initializes the database.
+    /// </summary>
     public static class DatabaseInitializer
     {
         private static readonly string MasterConnectionString = @"Server=localhost;Database=master;Trusted_Connection=True;TrustServerCertificate=True;";
 
+        /// <summary>
+        /// Initializes the database.
+        /// </summary>
+        /// <exception cref="FileNotFoundException"> Thrown if database initialization script not found. </exception>
         public static void InitializeDatabase()
         {
             try
@@ -100,6 +107,9 @@ namespace Steampunks.DataLink
             }
         }
 
+        /// <summary>
+        /// Adds sample data.
+        /// </summary>
         public static void AddSampleData()
         {
             var databaseConnector = new DatabaseConnector();
